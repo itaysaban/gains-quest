@@ -2,6 +2,7 @@ import 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/lib/auth/AuthProvider';
@@ -53,20 +54,29 @@ function RootNavigation() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={persistOptions}
-        onSuccess={() => {
-          // Cache has finished restoring from AsyncStorage — any set logged (or exercise added) right
-          // before the app was killed is now sitting paused in the mutation cache; resume it.
-          queryClient.resumePausedMutations();
-        }}
-      >
-        <AuthProvider>
-          <RootNavigation />
-        </AuthProvider>
-      </PersistQueryClientProvider>
-    </GestureHandlerRootView>
+    // Every screen's <Screen> wrapper relies on SafeAreaView for its top/left/right insets — without
+    // an explicit provider here, that falls back to React Navigation's per-navigator auto-injected
+    // SafeAreaProviderCompat, which seeds from static initialMetrics rather than a live native
+    // measurement. That's unreliable specifically for fullScreenModal screens (session/active,
+    // session/summary): a true full-screen presentation extends behind the status bar/Dynamic Island,
+    // so it needs a fresh, correct inset — a stale one is exactly what made the active session's
+    // close button render too close to the top on notch/Dynamic-Island devices.
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={persistOptions}
+          onSuccess={() => {
+            // Cache has finished restoring from AsyncStorage — any set logged (or exercise added) right
+            // before the app was killed is now sitting paused in the mutation cache; resume it.
+            queryClient.resumePausedMutations();
+          }}
+        >
+          <AuthProvider>
+            <RootNavigation />
+          </AuthProvider>
+        </PersistQueryClientProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

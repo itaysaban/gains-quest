@@ -5,6 +5,7 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
@@ -70,6 +71,10 @@ export default function SessionSummary() {
   }
 
   return (
+    // fullScreenModal screens get their own native view-controller hierarchy on iOS that doesn't
+    // reliably inherit safe-area measurements from the root SafeAreaProvider (app/_layout.tsx) — a
+    // documented react-native-screens/expo-router gap. Same fix as session/active.tsx.
+    <SafeAreaProvider>
     <Screen scroll>
       {showConfetti ? (
         <ConfettiCannon
@@ -158,6 +163,7 @@ export default function SessionSummary() {
         <Button label="Done" onPress={() => router.dismissTo('/(tabs)/home')} fullWidth />
       </View>
     </Screen>
+    </SafeAreaProvider>
   );
 }
 

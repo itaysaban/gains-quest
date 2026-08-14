@@ -100,7 +100,7 @@ export default function RoutineDetail() {
             data={items}
             keyExtractor={(item) => item.id}
             containerStyle={{ flex: 1 }}
-            contentContainerStyle={{ padding: spacing.lg, paddingBottom: 200 }}
+            contentContainerStyle={{ padding: spacing.lg }}
             onDragEnd={({ data }) => {
               setLocalOrder(data);
               reorderExercises.mutate({

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, ScrollView, Alert, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
@@ -60,15 +61,22 @@ export default function ActiveSession() {
 
   if (!sessionId) {
     return (
-      <Screen>
-        <EmptyState
-          icon="barbell-outline"
-          title="No active workout"
-          message="Start a workout from the Home tab first."
-          actionLabel="Back to Home"
-          onAction={() => router.dismissTo('/(tabs)/home')}
-        />
-      </Screen>
+      // presentation: 'fullScreenModal' screens get their own native view-controller hierarchy on
+      // iOS that doesn't reliably inherit safe-area measurements from the root SafeAreaProvider in
+      // app/_layout.tsx — a documented react-native-screens/expo-router gap. Each fullScreenModal
+      // screen needs its own provider so its top inset (status bar / Dynamic Island) resolves
+      // correctly instead of reading as 0.
+      <SafeAreaProvider>
+        <Screen>
+          <EmptyState
+            icon="barbell-outline"
+            title="No active workout"
+            message="Start a workout from the Home tab first."
+            actionLabel="Back to Home"
+            onAction={() => router.dismissTo('/(tabs)/home')}
+          />
+        </Screen>
+      </SafeAreaProvider>
     );
   }
 
@@ -132,6 +140,8 @@ export default function ActiveSession() {
   const groups = sessionExercises ? groupBySuperset(sessionExercises) : [];
 
   return (
+    // See the SafeAreaProvider note on the "no active workout" return above — same reasoning.
+    <SafeAreaProvider>
     <Screen padded={false}>
       <View
         style={{
@@ -209,5 +219,6 @@ export default function ActiveSession() {
         }}
       />
     </Screen>
+    </SafeAreaProvider>
   );
 }
