@@ -7,15 +7,15 @@ on conflict (level) do nothing;
 update public.level_thresholds set xp_required = 0 where level = 1;
 
 -- Badges (Strength / Consistency / Exploration / Volume — PRD 4.5)
-insert into public.badges (code, name, description, category, icon, criteria) values
-  ('first_workout', 'First Rep', 'Complete your first workout session.', 'consistency', 'flag', '{"type":"session_count","value":1}'),
-  ('streak_7', 'Week Warrior', 'Hit a 7-day training streak.', 'consistency', 'flame', '{"type":"streak_days","value":7}'),
-  ('streak_30', '30-Day Streak', 'Hit a 30-day training streak.', 'consistency', 'flame', '{"type":"streak_days","value":30}'),
-  ('exercises_10', 'Tried 10 Custom Exercises', 'Create 10 custom exercises.', 'exploration', 'compass', '{"type":"exercise_count_created","value":10}'),
-  ('sessions_50', 'Half Century', 'Complete 50 workout sessions.', 'consistency', 'medal', '{"type":"session_count","value":50}'),
-  ('squat_100kg', 'First 100kg Squat', 'Squat 100kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Barbell Back Squat","value":100}'),
-  ('bench_100kg', 'First 100kg Bench', 'Bench press 100kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Barbell Bench Press","value":100}'),
-  ('deadlift_140kg', 'First 140kg Deadlift', 'Deadlift 140kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Conventional Deadlift","value":140}')
+insert into public.badges (code, name, description, category, icon, criteria, points) values
+  ('first_workout', 'First Rep', 'Complete your first workout session.', 'consistency', 'flag', '{"type":"session_count","value":1}', 100),
+  ('streak_7', 'Week Warrior', 'Hit a 7-day training streak.', 'consistency', 'flame', '{"type":"streak_days","value":7}', 500),
+  ('streak_30', '30-Day Streak', 'Hit a 30-day training streak.', 'consistency', 'flame', '{"type":"streak_days","value":30}', 750),
+  ('exercises_10', 'Tried 10 Custom Exercises', 'Create 10 custom exercises.', 'exploration', 'compass', '{"type":"exercise_count_created","value":10}', 250),
+  ('sessions_50', 'Half Century', 'Complete 50 workout sessions.', 'consistency', 'medal', '{"type":"session_count","value":50}', 2000),
+  ('squat_100kg', 'First 100kg Squat', 'Squat 100kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Barbell Back Squat","value":100}', 1000),
+  ('bench_100kg', 'First 100kg Bench', 'Bench press 100kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Barbell Bench Press","value":100}', 1000),
+  ('deadlift_140kg', 'First 140kg Deadlift', 'Deadlift 140kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Conventional Deadlift","value":140}', 1000)
 on conflict (code) do nothing;
 
 -- Built-in exercise library (system exercises, visible to every user, user_id null)

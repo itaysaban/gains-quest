@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, spacing, radius } from '@/lib/theme';
@@ -11,11 +12,30 @@ interface Props {
   onDrag: () => void;
   onRemove: () => void;
   onToggleSuperset: () => void;
-  onPatch: (patch: Partial<{ target_sets: number | null; target_reps_min: number | null; target_reps_max: number | null; rest_seconds: number | null }>) => void;
+  onPatch: (
+    patch: Partial<{
+      target_sets: number | null;
+      target_reps_min: number | null;
+      target_reps_max: number | null;
+      rest_seconds: number | null;
+      note: string | null;
+    }>,
+  ) => void;
 }
 
 export function RoutineExerciseRow({ item, isSupersetLinked, onDrag, onRemove, onToggleSuperset, onPatch }: Props) {
   const theme = useTheme();
+  const [noteExpanded, setNoteExpanded] = useState(!!item.note);
+
+  // Local drafts, committed on blur — not on every keystroke. Sets/Reps/Rest/Note previously called
+  // onPatch() straight from onChangeText, which fires a network write on every character typed; since
+  // the field's `value` was wired directly to `item.*` (no local echo) and nothing updated it
+  // optimistically, each keystroke's round trip had to land before the input stopped snapping back to
+  // its old value — visible as digits flashing away while typing, worst on fast multi-digit entry.
+  const [draftSets, setDraftSets] = useState(item.target_sets != null ? String(item.target_sets) : '');
+  const [draftReps, setDraftReps] = useState(item.target_reps_max != null ? String(item.target_reps_max) : '');
+  const [draftRest, setDraftRest] = useState(item.rest_seconds != null ? String(item.rest_seconds) : '');
+  const [draftNote, setDraftNote] = useState(item.note ?? '');
 
   return (
     <View
@@ -49,8 +69,17 @@ export function RoutineExerciseRow({ item, isSupersetLinked, onDrag, onRemove, o
             <TextField
               label="Sets"
               keyboardType="number-pad"
-              value={item.target_sets != null ? String(item.target_sets) : ''}
-              onChangeText={(t) => onPatch({ target_sets: t ? Number(t) : null })}
+              value={draftSets}
+              onChangeText={setDraftSets}
+              onBlur={() => {
+                // Erased without typing a replacement — revert to the last saved value instead of
+                // wiping a planned target (PRD §9 edge case). Nothing to persist, so no onPatch call.
+                if (!draftSets) {
+                  setDraftSets(item.target_sets != null ? String(item.target_sets) : '');
+                  return;
+                }
+                onPatch({ target_sets: Number(draftSets) });
+              }}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -58,16 +87,30 @@ export function RoutineExerciseRow({ item, isSupersetLinked, onDrag, onRemove, o
               label="Reps"
               keyboardType="number-pad"
               placeholder="e.g. 8"
-              value={item.target_reps_max != null ? String(item.target_reps_max) : ''}
-              onChangeText={(t) => onPatch({ target_reps_min: t ? Number(t) : null, target_reps_max: t ? Number(t) : null })}
+              value={draftReps}
+              onChangeText={setDraftReps}
+              onBlur={() => {
+                if (!draftReps) {
+                  setDraftReps(item.target_reps_max != null ? String(item.target_reps_max) : '');
+                  return;
+                }
+                onPatch({ target_reps_min: Number(draftReps), target_reps_max: Number(draftReps) });
+              }}
             />
           </View>
           <View style={{ flex: 1 }}>
             <TextField
               label="Rest (s)"
               keyboardType="number-pad"
-              value={item.rest_seconds != null ? String(item.rest_seconds) : ''}
-              onChangeText={(t) => onPatch({ rest_seconds: t ? Number(t) : null })}
+              value={draftRest}
+              onChangeText={setDraftRest}
+              onBlur={() => {
+                if (!draftRest) {
+                  setDraftRest(item.rest_seconds != null ? String(item.rest_seconds) : '');
+                  return;
+                }
+                onPatch({ rest_seconds: Number(draftRest) });
+              }}
             />
           </View>
         </View>
@@ -78,6 +121,23 @@ export function RoutineExerciseRow({ item, isSupersetLinked, onDrag, onRemove, o
             {isSupersetLinked ? 'Linked as superset with previous' : 'Link as superset with previous'}
           </Text>
         </Pressable>
+
+        {noteExpanded ? (
+          <TextField
+            label="Note"
+            placeholder="e.g. grip width, tempo cue"
+            value={draftNote}
+            onChangeText={setDraftNote}
+            onBlur={() => onPatch({ note: draftNote || null })}
+          />
+        ) : (
+          <Pressable onPress={() => setNoteExpanded(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="add-circle-outline" size={16} color={theme.textMuted} />
+            <Text variant="caption" color="muted" weight="600">
+              Add note
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );

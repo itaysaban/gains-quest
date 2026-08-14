@@ -38,6 +38,41 @@ export function useExercises(filters: ExerciseFilters = {}) {
   });
 }
 
+/** Client-side "recently used" heuristic (no schema needed — session_exercises.created_at already
+ * captures this): the exercises most recently added to any session, most recent first. Shown in
+ * ExercisePicker above the alphabetical list when search is empty. */
+export function useRecentlyUsedExercises(limit = 10) {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['recently-used-exercises', userId, limit],
+    enabled: !!userId,
+    queryFn: async (): Promise<Exercise[]> => {
+      const { data: sessionExerciseRows, error: seError } = await supabase
+        .from('session_exercises')
+        .select('exercise_id, created_at')
+        .eq('user_id', userId!)
+        .order('created_at', { ascending: false })
+        .limit(50); // over-fetch since the same exercise repeats across sessions; dedupe below
+      if (seError) throw seError;
+
+      const orderedUniqueIds: string[] = [];
+      for (const row of sessionExerciseRows) {
+        if (!orderedUniqueIds.includes(row.exercise_id)) orderedUniqueIds.push(row.exercise_id);
+        if (orderedUniqueIds.length >= limit) break;
+      }
+      if (orderedUniqueIds.length === 0) return [];
+
+      const { data: exercises, error } = await supabase.from('exercises').select('*').in('id', orderedUniqueIds);
+      if (error) throw error;
+
+      const byId = new Map(exercises.map((e) => [e.id, e]));
+      return orderedUniqueIds.map((id) => byId.get(id)).filter((e): e is Exercise => !!e);
+    },
+  });
+}
+
 export function useExercise(exerciseId: string | undefined) {
   return useQuery({
     queryKey: ['exercise', exerciseId],

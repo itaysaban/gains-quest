@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
+import type { UnitPreference } from '@/types/database.types';
 
 interface Props {
   label: string;
@@ -10,9 +11,13 @@ interface Props {
   step: number;
   onChange: (value: number | null) => void;
   decimals?: number;
+  /** Purely for the label suffix (e.g. "WEIGHT (LB)") — value/onChange are passed and returned in
+   * whatever unit the caller already converted to/from; this component does no conversion itself.
+   * Conversion lives once, at the data boundary, in lib/utils/units.ts (see DraftSetRow.tsx). */
+  unit?: UnitPreference;
 }
 
-export function SetInputAdjuster({ label, value, step, onChange, decimals = 0 }: Props) {
+export function SetInputAdjuster({ label, value, step, onChange, decimals = 0, unit }: Props) {
   const theme = useTheme();
 
   function adjust(delta: number) {
@@ -25,10 +30,13 @@ export function SetInputAdjuster({ label, value, step, onChange, decimals = 0 }:
     <View style={{ alignItems: 'center', gap: spacing.xs }}>
       <Text variant="label" color="muted" weight="600">
         {label.toUpperCase()}
+        {unit ? ` (${unit.toUpperCase()})` : ''}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
         <Pressable
           onPress={() => adjust(-step)}
+          accessibilityRole="button"
+          accessibilityLabel={`Decrease ${label}`}
           style={{
             width: 32,
             height: 32,
@@ -58,6 +66,8 @@ export function SetInputAdjuster({ label, value, step, onChange, decimals = 0 }:
         />
         <Pressable
           onPress={() => adjust(step)}
+          accessibilityRole="button"
+          accessibilityLabel={`Increase ${label}`}
           style={{
             width: 32,
             height: 32,

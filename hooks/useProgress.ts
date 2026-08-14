@@ -11,20 +11,36 @@ export interface ExerciseHistoryEntry {
   sessionId: string;
 }
 
-export function useExerciseHistory(exerciseId: string | undefined) {
+export type HistoryRange = '1m' | '3m' | '1y' | 'all';
+
+function rangeToSince(range: HistoryRange): Date | null {
+  if (range === 'all') return null;
+  const since = new Date();
+  if (range === '1m') since.setMonth(since.getMonth() - 1);
+  else if (range === '3m') since.setMonth(since.getMonth() - 3);
+  else since.setFullYear(since.getFullYear() - 1);
+  return since;
+}
+
+export function useExerciseHistory(exerciseId: string | undefined, range: HistoryRange = 'all') {
   const { session } = useAuth();
   const userId = session?.user.id;
 
   return useQuery({
-    queryKey: ['exercise-history', userId, exerciseId],
+    queryKey: ['exercise-history', userId, exerciseId, range],
     enabled: !!userId && !!exerciseId,
     queryFn: async (): Promise<ExerciseHistoryEntry[]> => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('logged_sets')
         .select('*, session_exercise:session_exercises!inner(exercise_id, session_id, session:workout_sessions(started_at, status))')
         .eq('session_exercise.exercise_id', exerciseId!)
         .neq('set_type', 'warmup')
         .order('completed_at', { ascending: true });
+
+      const since = rangeToSince(range);
+      if (since) query = query.gte('completed_at', since.toISOString());
+
+      const { data, error } = await query;
       if (error) throw error;
 
       return (data as any[])

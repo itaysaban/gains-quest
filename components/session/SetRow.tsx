@@ -2,6 +2,7 @@ import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
+import { formatSetCompact } from './LastSessionRow';
 import type { LoggedSet } from '@/types/domain';
 import type { TrackingType } from '@/types/database.types';
 
@@ -27,14 +28,7 @@ export function SetRow({
 }) {
   const theme = useTheme();
 
-  const valueLabel =
-    trackingType === 'time'
-      ? `${set.time_seconds ?? 0}s`
-      : trackingType === 'distance'
-        ? `${set.distance_meters ?? 0}m`
-        : trackingType === 'bodyweight_reps'
-          ? `${set.reps ?? 0} reps`
-          : `${set.weight ?? 0} × ${set.reps ?? 0}`;
+  const valueLabel = formatSetCompact(set, trackingType);
 
   return (
     <Pressable

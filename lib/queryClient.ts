@@ -31,3 +31,15 @@ export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
   key: 'gains-quest-query-cache',
 });
+
+// By default the persister only dehydrates mutations that have already transitioned to `isPaused`
+// (i.e. React Query already tried and failed once). A set logged the instant before a force-quit may
+// never reach that state — it just never gets the chance to run. Persisting every mutation
+// unconditionally means a genuinely offline-and-killed write still survives to be resumed.
+export const persistOptions = {
+  persister: asyncStoragePersister,
+  maxAge: 1000 * 60 * 60 * 24 * 7,
+  dehydrateOptions: {
+    shouldDehydrateMutation: () => true,
+  },
+};

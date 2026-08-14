@@ -75,6 +75,7 @@ export default function SessionSummary() {
         <ConfettiCannon
           count={120}
           origin={{ x: Dimensions.get('window').width / 2, y: 0 }}
+          colors={[theme.primary, theme.gradientFrom, theme.gradientTo, theme.warning, '#FFFFFF']}
           fadeOut
           onAnimationEnd={() => setShowConfetti(false)}
         />
@@ -154,7 +155,7 @@ export default function SessionSummary() {
 
       <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
         {hasCelebration ? <Button label="Share" variant="secondary" onPress={handleShare} fullWidth /> : null}
-        <Button label="Done" onPress={() => router.replace('/(tabs)/home')} fullWidth />
+        <Button label="Done" onPress={() => router.dismissTo('/(tabs)/home')} fullWidth />
       </View>
     </Screen>
   );

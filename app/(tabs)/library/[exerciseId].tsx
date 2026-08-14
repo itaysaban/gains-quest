@@ -18,6 +18,7 @@ import {
 } from '@/hooks/useExercises';
 import { spacing } from '@/lib/theme';
 import { useTheme } from '@/lib/theme';
+import { splitMuscleGroups, TRACKING_TYPE_LABELS } from '@/lib/utils/exercise';
 import type { ExerciseFormValues } from '@/lib/utils/validation/exercise';
 
 export default function ExerciseDetail() {
@@ -99,7 +100,7 @@ export default function ExerciseDetail() {
           <View style={{ flex: 1 }}>
             <Text variant="title">{exercise.name}</Text>
             <Text color="muted">
-              {exercise.category} · {exercise.equipment} · {exercise.tracking_type.replace('_', ' ')}
+              {exercise.category} · {exercise.equipment} · {TRACKING_TYPE_LABELS[exercise.tracking_type]}
             </Text>
           </View>
           <Pressable
@@ -111,11 +112,21 @@ export default function ExerciseDetail() {
         </View>
 
         {exercise.muscle_groups.length > 0 ? (
-          <Card>
-            <Text variant="label" color="muted" weight="600">
-              MUSCLE GROUPS
-            </Text>
-            <Text>{exercise.muscle_groups.join(', ')}</Text>
+          <Card style={{ gap: spacing.sm }}>
+            <View>
+              <Text variant="label" color="muted" weight="600">
+                PRIMARY MUSCLE
+              </Text>
+              <Text>{splitMuscleGroups(exercise.muscle_groups).primary}</Text>
+            </View>
+            {splitMuscleGroups(exercise.muscle_groups).secondary.length > 0 ? (
+              <View>
+                <Text variant="label" color="muted" weight="600">
+                  SECONDARY MUSCLES
+                </Text>
+                <Text>{splitMuscleGroups(exercise.muscle_groups).secondary.join(', ')}</Text>
+              </View>
+            ) : null}
           </Card>
         ) : null}
 

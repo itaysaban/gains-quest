@@ -1,35 +1,28 @@
-import { View, FlatList } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { XpBar } from '@/components/gamification/XpBar';
-import { StreakFlame } from '@/components/gamification/StreakFlame';
 import { useUserLevel, useStreak } from '@/hooks/useGamification';
 import { useTodayPlan } from '@/hooks/useTodayPlan';
-import { useExercises } from '@/hooks/useExercises';
+import { useProfile } from '@/hooks/useProfile';
 import { useStartSession } from '@/hooks/useWorkoutSession';
-import { useAddExerciseToSession } from '@/hooks/useWorkoutSession';
 import { supabase } from '@/lib/supabase';
-import { spacing } from '@/lib/theme';
+import { useTheme, spacing, radius } from '@/lib/theme';
 import type { RoutineExerciseWithDetails } from '@/types/domain';
 
 export default function Home() {
   const router = useRouter();
+  const theme = useTheme();
+  const { data: profile } = useProfile();
   const { data: level } = useUserLevel();
   const { data: streak } = useStreak();
   const { data: todayRoutines, isLoading: loadingPlan } = useTodayPlan();
-  const { data: favorites } = useExercises({ favoritesOnly: true });
   const startSession = useStartSession();
-  const addExercise = useAddExerciseToSession();
-
-  async function handleStartEmpty() {
-    const newSession = await startSession.mutateAsync({ routineId: null });
-    router.push('/session/active');
-    void newSession;
-  }
 
   async function handleStartRoutine(routineId: string) {
     const { data, error } = await supabase
@@ -38,76 +31,118 @@ export default function Home() {
       .eq('routine_id', routineId)
       .order('order_index');
     if (error) throw error;
-    await startSession.mutateAsync({
-      routineId,
-      routineExercises: data as unknown as RoutineExerciseWithDetails[],
-    });
-    router.push('/session/active');
-  }
-
-  async function handleQuickLog(exerciseId: string) {
-    const newSession = await startSession.mutateAsync({ routineId: null });
-    await addExercise.mutateAsync({ sessionId: newSession.id, exerciseId, orderIndex: 0 });
+    await startSession.mutateAsync({ routineId, routineExercises: data as unknown as RoutineExerciseWithDetails[] });
     router.push('/session/active');
   }
 
   if (!level || !streak) return <LoadingState />;
 
+  const todayRoutine = todayRoutines?.[0];
+
   return (
     <Screen scroll>
       <View style={{ gap: spacing.lg }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text variant="title">GainsQuest</Text>
-          <StreakFlame streak={streak} compact />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Pressable
+            onPress={() => router.push('/(tabs)/settings')}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
+          >
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: radius.full,
+                backgroundColor: theme.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="person" size={22} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text weight="700">Hello, {profile?.display_name ?? 'Athlete'}!</Text>
+              <Text variant="caption" color="muted">
+                Let's Crush it! 💪
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/(tabs)/settings/notifications')}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: radius.full,
+              backgroundColor: theme.primaryMuted,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="notifications" size={18} color={theme.primary} />
+          </Pressable>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <StatTile icon="star" label="Points" value={level.total_xp.toLocaleString()} onPress={() => router.push('/(tabs)/achievements')} />
+          <StatTile icon="flame" label="Streak" value={`${streak.current_streak_days}d`} onPress={() => router.push('/(tabs)/achievements')} />
         </View>
 
         <Card>
           <XpBar level={level} />
         </Card>
 
-        <Button label="Start Empty Workout" onPress={handleStartEmpty} loading={startSession.isPending} fullWidth />
-
         <View style={{ gap: spacing.sm }}>
-          <Text variant="subtitle">Today's Plan</Text>
-          {loadingPlan ? null : todayRoutines && todayRoutines.length > 0 ? (
-            todayRoutines.map((routine) => (
-              <Card key={routine.id} onPress={() => handleStartRoutine(routine.id)}>
-                <Text weight="600">{routine.name}</Text>
-                {routine.description ? (
-                  <Text color="muted" variant="caption">
-                    {routine.description}
-                  </Text>
-                ) : null}
-              </Card>
-            ))
+          <Text variant="subtitle">Start Today's Routine</Text>
+          {loadingPlan ? null : todayRoutine ? (
+            <Card onPress={() => handleStartRoutine(todayRoutine.id)} style={{ gap: spacing.xs }}>
+              <Text weight="700" variant="subtitle">
+                {todayRoutine.name}
+              </Text>
+              <Button label="Start" onPress={() => handleStartRoutine(todayRoutine.id)} loading={startSession.isPending} />
+            </Card>
           ) : (
-            <Card>
-              <Text color="muted">Nothing scheduled today. Build a routine and schedule it from the Routines tab.</Text>
+            <Card style={{ gap: spacing.sm }}>
+              <Text color="muted">Nothing scheduled today.</Text>
+              <Button label="Go to Add Workout" variant="secondary" onPress={() => router.push('/(tabs)/add-workout')} />
             </Card>
           )}
         </View>
-
-        {favorites && favorites.length > 0 ? (
-          <View style={{ gap: spacing.sm }}>
-            <Text variant="subtitle">Quick Log</Text>
-            <FlatList
-              horizontal
-              data={favorites}
-              keyExtractor={(item) => item.id}
-              showsHorizontalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
-              renderItem={({ item }) => (
-                <Card onPress={() => handleQuickLog(item.id)} style={{ minWidth: 140 }}>
-                  <Text weight="600">{item.name}</Text>
-                  <Text color="muted" variant="caption">
-                    {item.category}
-                  </Text>
-                </Card>
-              )}
-            />
-          </View>
-        ) : null}
       </View>
     </Screen>
+  );
+}
+
+function StatTile({
+  icon,
+  label,
+  value,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        flex: 1,
+        backgroundColor: theme.surface,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: theme.border,
+        padding: spacing.md,
+        alignItems: 'center',
+        gap: 4,
+      }}
+    >
+      <Ionicons name={icon} size={20} color={theme.primary} />
+      <Text weight="700">{value}</Text>
+      <Text variant="label" color="muted">
+        {label}
+      </Text>
+    </Pressable>
   );
 }

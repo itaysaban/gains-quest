@@ -14,7 +14,7 @@
     "android": {
       "package": "com.gainsquest.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0D0D14",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -37,10 +37,11 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#6C5CE7"
+          "color": "#FF6A3D"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

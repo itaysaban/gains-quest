@@ -76,7 +76,7 @@ export default function RoutineDetail() {
 
   async function handleDuplicate() {
     const newId = await duplicateRoutine.mutateAsync({ routineId: routineId! });
-    router.replace(`/(tabs)/routines/${newId}`);
+    router.replace(`/(tabs)/add-workout/routines/${newId}`);
   }
 
   return (
@@ -130,7 +130,7 @@ export default function RoutineDetail() {
           <Button label="+ Add Exercise" variant="secondary" onPress={() => setPickerVisible(true)} fullWidth />
           <Button label="Start Workout" onPress={handleStartWorkout} loading={startSession.isPending} fullWidth />
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <Button label="Schedule" variant="secondary" onPress={() => router.push(`/(tabs)/routines/${routineId}/schedule`)} fullWidth />
+            <Button label="Schedule" variant="secondary" onPress={() => router.push(`/(tabs)/add-workout/routines/${routineId}/schedule`)} fullWidth />
             <Button label="Duplicate" variant="secondary" onPress={handleDuplicate} fullWidth />
           </View>
           <Button

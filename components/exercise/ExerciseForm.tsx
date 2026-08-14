@@ -16,6 +16,7 @@ const TRACKING_TYPES: { value: TrackingType; label: string }[] = [
   { value: 'bodyweight_reps', label: 'Bodyweight Reps' },
   { value: 'time', label: 'Time' },
   { value: 'distance', label: 'Distance' },
+  { value: 'distance_duration', label: 'Distance + Time (pace)' },
 ];
 const MUSCLE_GROUPS = [
   'chest', 'back', 'shoulders', 'biceps', 'triceps', 'quadriceps', 'hamstrings', 'glutes', 'calves', 'core', 'cardio',

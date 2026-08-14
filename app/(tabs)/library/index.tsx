@@ -8,6 +8,7 @@ import { TextField } from '@/components/ui/TextField';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useExercises, useToggleFavoriteExercise, type ExerciseFilters } from '@/hooks/useExercises';
+import { splitMuscleGroups, TRACKING_TYPE_LABELS } from '@/lib/utils/exercise';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { ExerciseCategory } from '@/types/database.types';
 
@@ -53,29 +54,35 @@ export default function ExerciseLibrary() {
           data={exercises}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 100 }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push(`/(tabs)/library/${item.id}`)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingVertical: spacing.md,
-                borderBottomWidth: 1,
-                borderBottomColor: theme.border,
-              }}
-            >
-              <View>
-                <Text weight="600">{item.name}</Text>
-                <Text variant="caption" color="muted">
-                  {item.category} · {item.equipment} {item.is_system ? '· built-in' : ''}
-                </Text>
-              </View>
-              <Pressable onPress={() => toggleFavorite.mutate({ id: item.id, isFavorite: !item.is_favorite })} hitSlop={8}>
-                <Ionicons name={item.is_favorite ? 'star' : 'star-outline'} size={22} color={theme.warning} />
+          renderItem={({ item }) => {
+            const { primary, secondary } = splitMuscleGroups(item.muscle_groups);
+            return (
+              <Pressable
+                onPress={() => router.push(`/(tabs)/library/${item.id}`)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingVertical: spacing.md,
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.border,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text weight="600">{item.name}</Text>
+                  <Text variant="caption" color="muted">
+                    {primary ?? item.category}
+                    {secondary.length > 0 ? ` (+ ${secondary.join(', ')})` : ''} · {item.equipment} ·{' '}
+                    {TRACKING_TYPE_LABELS[item.tracking_type]}
+                    {item.is_system ? ' · built-in' : ''}
+                  </Text>
+                </View>
+                <Pressable onPress={() => toggleFavorite.mutate({ id: item.id, isFavorite: !item.is_favorite })} hitSlop={8}>
+                  <Ionicons name={item.is_favorite ? 'star' : 'star-outline'} size={22} color={theme.warning} />
+                </Pressable>
               </Pressable>
-            </Pressable>
-          )}
+            );
+          }}
         />
       )}
 

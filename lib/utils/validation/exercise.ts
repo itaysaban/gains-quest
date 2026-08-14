@@ -11,7 +11,7 @@ export const exerciseFormSchema = z.object({
   category: z.enum(['push', 'pull', 'legs', 'core', 'cardio']),
   muscleGroups: z.array(z.string()),
   equipment: z.enum(['barbell', 'dumbbell', 'machine', 'bodyweight', 'cable', 'band']),
-  trackingType: z.enum(['weight_reps', 'time', 'distance', 'bodyweight_reps']),
+  trackingType: z.enum(['weight_reps', 'time', 'distance', 'bodyweight_reps', 'distance_duration']),
   notes: z.string().max(2000).optional().or(z.literal('')),
   customFields: z.array(customFieldSchema),
 });

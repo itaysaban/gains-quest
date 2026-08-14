@@ -5,15 +5,22 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/lib/auth/AuthProvider';
-import { queryClient, asyncStoragePersister } from '@/lib/queryClient';
+import { queryClient, persistOptions } from '@/lib/queryClient';
+import { registerMutationDefaults } from '@/lib/registerMutationDefaults';
+import { useStaleSessionPrompt } from '@/hooks/useStaleSessionPrompt';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useTheme } from '@/lib/theme';
+
+// Runs once at module load — before the persisted cache below ever restores — so every resumable
+// mutation has a registered mutationFn by the time resumePausedMutations() needs one.
+registerMutationDefaults();
 
 function RootNavigation() {
   const { session, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();
+  useStaleSessionPrompt({ checkOnAppForeground: true });
 
   useEffect(() => {
     if (isLoading) return;
@@ -49,7 +56,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PersistQueryClientProvider
         client={queryClient}
-        persistOptions={{ persister: asyncStoragePersister, maxAge: 1000 * 60 * 60 * 24 * 7 }}
+        persistOptions={persistOptions}
+        onSuccess={() => {
+          // Cache has finished restoring from AsyncStorage — any set logged (or exercise added) right
+          // before the app was killed is now sitting paused in the mutation cache; resume it.
+          queryClient.resumePausedMutations();
+        }}
       >
         <AuthProvider>
           <RootNavigation />

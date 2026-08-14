@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, ScrollView, Alert, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,17 @@ import { RestTimerBar } from '@/components/session/RestTimerBar';
 import { ExerciseLogCard } from '@/components/session/ExerciseLogCard';
 import { ExercisePicker } from '@/components/exercise/ExercisePicker';
 import { useSessionStore } from '@/store/sessionStore';
-import { useSessionExercises, useAddExerciseToSession, useCompleteSession, useDiscardSession } from '@/hooks/useWorkoutSession';
+import {
+  useSessionExercises,
+  useAddExerciseToSession,
+  useCompleteSession,
+  useDiscardSession,
+  useRemoveExerciseFromSession,
+  useSwapSessionExercise,
+} from '@/hooks/useWorkoutSession';
+import { usePrefetchCurrentBestForSession } from '@/hooks/useExerciseCurrentBest';
+import { useStaleSessionPrompt } from '@/hooks/useStaleSessionPrompt';
+import { useProfile } from '@/hooks/useProfile';
 import { groupBySuperset } from '@/types/domain';
 import { useTheme, spacing } from '@/lib/theme';
 import { supabase } from '@/lib/supabase';
@@ -27,13 +37,26 @@ export default function ActiveSession() {
   const pausedAccumulatedSeconds = useSessionStore((s) => s.pausedAccumulatedSeconds);
   const pausedAtMs = useSessionStore((s) => s.pausedAtMs);
 
+  useStaleSessionPrompt();
+
   const { data: sessionExercises, isLoading } = useSessionExercises(sessionId);
+  const { data: profile } = useProfile();
   const addExercise = useAddExerciseToSession();
+  const removeExercise = useRemoveExerciseFromSession();
+  const swapExercise = useSwapSessionExercise();
   const completeSession = useCompleteSession();
   const discardSession = useDiscardSession();
+  const prefetchCurrentBest = usePrefetchCurrentBestForSession();
 
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [swapTargetId, setSwapTargetId] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+
+  useEffect(() => {
+    if (!sessionExercises?.length) return;
+    prefetchCurrentBest(sessionExercises.map((se) => se.exercise_id)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionExercises?.map((se) => se.exercise_id).join(',')]);
 
   if (!sessionId) {
     return (
@@ -43,7 +66,7 @@ export default function ActiveSession() {
           title="No active workout"
           message="Start a workout from the Home tab first."
           actionLabel="Back to Home"
-          onAction={() => router.replace('/(tabs)/home')}
+          onAction={() => router.dismissTo('/(tabs)/home')}
         />
       </Screen>
     );
@@ -85,10 +108,25 @@ export default function ActiveSession() {
         style: 'destructive',
         onPress: async () => {
           await discardSession.mutateAsync(sessionId!);
-          router.replace('/(tabs)/home');
+          router.dismissTo('/(tabs)/home');
         },
       },
     ]);
+  }
+
+  function handleRemoveExercise(sessionExerciseId: string, hasLoggedSets: boolean) {
+    if (hasLoggedSets) {
+      Alert.alert('Remove exercise?', 'This exercise has logged sets — removing it deletes them too.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => removeExercise.mutate({ id: sessionExerciseId, sessionId: sessionId! }),
+        },
+      ]);
+      return;
+    }
+    removeExercise.mutate({ id: sessionExerciseId, sessionId: sessionId! });
   }
 
   const groups = sessionExercises ? groupBySuperset(sessionExercises) : [];
@@ -118,7 +156,7 @@ export default function ActiveSession() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl }}>
         <RestTimerBar />
 
-        {isLoading ? (
+        {isLoading || !profile ? (
           <Text color="muted">Loading…</Text>
         ) : groups.length === 0 ? (
           <EmptyState icon="add-circle-outline" title="No exercises yet" message="Add an exercise to start logging." />
@@ -135,7 +173,13 @@ export default function ActiveSession() {
                   key={sessionExercise.id}
                   sessionExercise={sessionExercise}
                   sessionId={sessionId}
+                  unit={profile.unit_preference}
                   onStartRest={startRestTimer}
+                  onRemove={() => handleRemoveExercise(sessionExercise.id, sessionExercise.sets.length > 0)}
+                  onRequestSwap={() => {
+                    setSwapTargetId(sessionExercise.id);
+                    setPickerVisible(true);
+                  }}
                 />
               ))}
             </View>
@@ -148,13 +192,20 @@ export default function ActiveSession() {
 
       <ExercisePicker
         visible={pickerVisible}
-        onClose={() => setPickerVisible(false)}
+        onClose={() => {
+          setPickerVisible(false);
+          setSwapTargetId(null);
+        }}
         onSelect={(exercise) => {
-          addExercise.mutate({
-            sessionId: sessionId!,
-            exerciseId: exercise.id,
-            orderIndex: (sessionExercises?.length ?? 0) + 1,
-          });
+          if (swapTargetId) {
+            swapExercise.mutate({ id: swapTargetId, sessionId: sessionId!, newExerciseId: exercise.id });
+          } else {
+            addExercise.mutate({
+              sessionId: sessionId!,
+              exerciseId: exercise.id,
+              orderIndex: (sessionExercises?.length ?? 0) + 1,
+            });
+          }
         }}
       />
     </Screen>

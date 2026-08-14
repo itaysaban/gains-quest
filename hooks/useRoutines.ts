@@ -21,6 +21,23 @@ export function useRoutines(includeArchived = false) {
   });
 }
 
+/** Distinct existing folder names for this user, for autocomplete on the routine form — folder is a
+ * free-text tag (not a first-class table), so this is just a light distinct-values query. */
+export function useRoutineFolders() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['routine-folders', userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase.from('routines').select('folder').not('folder', 'is', null);
+      if (error) throw error;
+      return Array.from(new Set(data.map((r) => r.folder).filter((f): f is string => !!f))).sort();
+    },
+  });
+}
+
 export function useRoutine(routineId: string | undefined) {
   return useQuery({
     queryKey: ['routine', routineId],
@@ -62,7 +79,7 @@ export function useCreateRoutine() {
     mutationFn: async (values: RoutineFormValues) => {
       const { data, error } = await supabase
         .from('routines')
-        .insert({ user_id: userId!, name: values.name, description: values.description || null })
+        .insert({ user_id: userId!, name: values.name, description: values.description || null, folder: values.folder || null })
         .select()
         .single();
       if (error) throw error;

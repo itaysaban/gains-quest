@@ -9,6 +9,7 @@ export type WorkoutSession = Database['public']['Tables']['workout_sessions']['R
 export type SessionExercise = Database['public']['Tables']['session_exercises']['Row'];
 export type LoggedSet = Database['public']['Tables']['logged_sets']['Row'];
 export type PersonalRecord = Database['public']['Tables']['personal_records']['Row'];
+export type ExerciseCurrentBest = Database['public']['Tables']['exercise_current_best']['Row'];
 export type BodyMeasurement = Database['public']['Tables']['body_measurements']['Row'];
 export type XpEvent = Database['public']['Tables']['xp_events']['Row'];
 export type UserLevel = Database['public']['Tables']['user_levels']['Row'];

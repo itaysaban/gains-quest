@@ -7,10 +7,10 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type UnitPreference = 'kg' | 'lb';
 export type ExerciseCategory = 'push' | 'pull' | 'legs' | 'core' | 'cardio';
 export type EquipmentType = 'barbell' | 'dumbbell' | 'machine' | 'bodyweight' | 'cable' | 'band';
-export type TrackingType = 'weight_reps' | 'time' | 'distance' | 'bodyweight_reps';
+export type TrackingType = 'weight_reps' | 'time' | 'distance' | 'bodyweight_reps' | 'distance_duration';
 export type SessionStatus = 'in_progress' | 'completed' | 'discarded';
 export type SetType = 'warmup' | 'working' | 'drop' | 'failure';
-export type PrRecordType = 'max_weight' | 'max_reps_at_weight' | 'est_1rm' | 'session_volume';
+export type PrRecordType = 'max_weight' | 'max_reps_at_weight' | 'est_1rm' | 'session_volume' | 'best_set_volume';
 export type MeasurementType = 'bodyweight' | 'body_fat_pct' | 'circumference';
 export type XpEventType = 'set_logged' | 'session_completed' | 'streak_bonus' | 'badge_unlocked';
 export type BadgeCategory = 'strength' | 'consistency' | 'exploration' | 'volume';
@@ -50,6 +50,9 @@ export interface Database {
           unit_preference: UnitPreference;
           weekly_goal_days: number;
           timezone: string;
+          progression_upper_increment_kg: number;
+          progression_lower_increment_kg: number;
+          progression_deload_pct: number;
           created_at: string;
           updated_at: string;
         },
@@ -60,6 +63,9 @@ export interface Database {
           unit_preference?: UnitPreference;
           weekly_goal_days?: number;
           timezone?: string;
+          progression_upper_increment_kg?: number;
+          progression_lower_increment_kg?: number;
+          progression_deload_pct?: number;
         }
       >;
       exercises: WritableTable<
@@ -102,11 +108,12 @@ export interface Database {
           user_id: string;
           name: string;
           description: string | null;
+          folder: string | null;
           is_archived: boolean;
           created_at: string;
           updated_at: string;
         },
-        { user_id: string; name: string; description?: string | null; is_archived?: boolean }
+        { user_id: string; name: string; description?: string | null; folder?: string | null; is_archived?: boolean }
       >;
       routine_exercises: WritableTable<
         {
@@ -121,6 +128,7 @@ export interface Database {
           target_reps_max: number | null;
           target_weight: number | null;
           rest_seconds: number | null;
+          note: string | null;
           created_at: string;
         },
         {
@@ -133,6 +141,7 @@ export interface Database {
           target_reps_max?: number | null;
           target_weight?: number | null;
           rest_seconds?: number | null;
+          note?: string | null;
         }
       >;
       routine_schedules: WritableTable<
@@ -171,6 +180,8 @@ export interface Database {
           total_volume: number;
           total_sets: number;
           xp_earned: number;
+          workout_type: string | null;
+          local_date: string | null;
           created_at: string;
           updated_at: string;
         },
@@ -180,6 +191,8 @@ export interface Database {
           name?: string | null;
           status?: SessionStatus;
           notes?: string | null;
+          workout_type?: string | null;
+          local_date?: string | null;
         }
       >;
       session_exercises: WritableTable<
@@ -191,6 +204,8 @@ export interface Database {
           order_index: number;
           superset_group_id: string | null;
           rest_seconds: number | null;
+          target_reps_min: number | null;
+          target_reps_max: number | null;
           created_at: string;
         },
         {
@@ -199,6 +214,8 @@ export interface Database {
           order_index?: number;
           superset_group_id?: string | null;
           rest_seconds?: number | null;
+          target_reps_min?: number | null;
+          target_reps_max?: number | null;
         }
       >;
       logged_sets: WritableTable<
@@ -215,11 +232,13 @@ export interface Database {
           rpe: number | null;
           rir: number | null;
           is_pr: boolean;
+          e1rm_kg: number | null;
           completed_at: string;
           created_at: string;
           updated_at: string;
         },
         {
+          id?: string; // client-generated for optimistic writes; server default applies if omitted
           session_exercise_id: string;
           set_index?: number;
           set_type?: SetType;
@@ -243,6 +262,27 @@ export interface Database {
         session_id: string | null;
         achieved_at: string;
         created_at: string;
+      }>;
+      exercise_current_best: ReadOnlyTable<{
+        user_id: string;
+        exercise_id: string;
+        best_weight: number | null;
+        best_weight_reps: number | null;
+        best_weight_logged_set_id: string | null;
+        best_weight_achieved_at: string | null;
+        best_est_1rm: number | null;
+        best_est_1rm_weight: number | null;
+        best_est_1rm_reps: number | null;
+        best_est_1rm_logged_set_id: string | null;
+        best_est_1rm_achieved_at: string | null;
+        best_set_weight: number | null;
+        best_set_reps: number | null;
+        best_set_volume: number | null;
+        best_set_logged_set_id: string | null;
+        best_set_achieved_at: string | null;
+        last_session_exercise_id: string | null;
+        last_session_completed_at: string | null;
+        updated_at: string;
       }>;
       body_measurements: WritableTable<
         {
@@ -302,6 +342,7 @@ export interface Database {
         category: BadgeCategory;
         icon: string;
         criteria: Json;
+        points: number;
         created_at: string;
       }>;
       user_badges: WritableTable<

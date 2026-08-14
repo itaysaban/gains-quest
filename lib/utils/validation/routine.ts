@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const routineFormSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(80),
   description: z.string().max(500).optional().or(z.literal('')),
+  folder: z.string().max(80).optional().or(z.literal('')),
 });
 
 export type RoutineFormValues = z.infer<typeof routineFormSchema>;
