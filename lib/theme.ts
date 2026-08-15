@@ -19,6 +19,16 @@ const light = {
   locked: '#B7B7C4',
   gradientFrom: '#FF9A56',
   gradientTo: '#FF3D3D',
+  // M3 Epic 3 Story 3.4: one accent per badge category, matching the Figma Achievement Hall design.
+  // Kept separate from the semantic danger/warning/info/success tokens (even where the hue matches)
+  // so badge-category styling can't accidentally shift if those tokens' meaning changes later.
+  badgeOnboarding: '#E1483A',
+  badgeCardio: '#E8B94A',
+  badgeConsistency: '#FF6A3D',
+  badgeVolume: '#D6428F',
+  badgeSocial: '#FF6FA0',
+  badgeProgression: '#0984E3',
+  badgeVariety: '#00B894',
 };
 
 const dark = {
@@ -39,6 +49,13 @@ const dark = {
   locked: '#5C5C6E',
   gradientFrom: '#FF9A56',
   gradientTo: '#FF3D3D',
+  badgeOnboarding: '#FF5C4D',
+  badgeCardio: '#FDCB6E',
+  badgeConsistency: '#FF6A3D',
+  badgeVolume: '#E14AA0',
+  badgeSocial: '#FF7FB0',
+  badgeProgression: '#4FA8F5',
+  badgeVariety: '#3ECF8E',
 };
 
 export type Theme = typeof light;

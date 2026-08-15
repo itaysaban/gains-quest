@@ -14,7 +14,8 @@ export type PrRecordType = 'max_weight' | 'max_reps_at_weight' | 'est_1rm' | 'se
 export type MeasurementType = 'bodyweight' | 'body_fat_pct' | 'circumference';
 export type XpEventType = 'set_logged' | 'session_completed' | 'streak_bonus' | 'badge_unlocked';
 export type PointSource = 'base' | 'volume' | 'cardio' | 'pr' | 'routine' | 'achievement';
-export type BadgeCategory = 'strength' | 'consistency' | 'exploration' | 'volume';
+// M3 Epic 3 Story 3.1: replaced the old 4-category set with the PRD's v1.0 categories.
+export type BadgeCategory = 'onboarding' | 'cardio' | 'consistency' | 'volume' | 'social' | 'progression' | 'variety';
 
 export interface CustomFieldDef {
   key: string;

@@ -1,8 +1,24 @@
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme, spacing, radius } from '@/lib/theme';
+import { useTheme, spacing, radius, type Theme } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import type { Badge, UserBadge } from '@/types/domain';
+import type { BadgeCategory } from '@/types/database.types';
+
+/** M3 Epic 3 Story 3.4: one accent color per badge category, matching the Figma Achievement Hall
+ * design (each badge's icon-circle color signals its category at a glance). */
+function categoryAccent(theme: Theme, category: BadgeCategory): string {
+  const map: Record<BadgeCategory, string> = {
+    onboarding: theme.badgeOnboarding,
+    cardio: theme.badgeCardio,
+    consistency: theme.badgeConsistency,
+    volume: theme.badgeVolume,
+    social: theme.badgeSocial,
+    progression: theme.badgeProgression,
+    variety: theme.badgeVariety,
+  };
+  return map[category];
+}
 
 export function AchievementList({ badges, userBadges }: { badges: Badge[]; userBadges: UserBadge[] }) {
   const unlockedIds = new Set(userBadges.map((ub) => ub.badge_id));
@@ -18,6 +34,7 @@ export function AchievementList({ badges, userBadges }: { badges: Badge[]; userB
 
 function AchievementRow({ badge, unlocked }: { badge: Badge; unlocked: boolean }) {
   const theme = useTheme();
+  const accent = categoryAccent(theme, badge.category);
 
   return (
     <View
@@ -27,8 +44,6 @@ function AchievementRow({ badge, unlocked }: { badge: Badge; unlocked: boolean }
         gap: spacing.md,
         backgroundColor: theme.surface,
         borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: theme.border,
         padding: spacing.md,
         opacity: unlocked ? 1 : 0.7,
       }}
@@ -40,10 +55,10 @@ function AchievementRow({ badge, unlocked }: { badge: Badge; unlocked: boolean }
           borderRadius: radius.full,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: unlocked ? theme.primaryMuted : theme.surfaceAlt,
+          backgroundColor: unlocked ? `${accent}33` : theme.surfaceAlt,
         }}
       >
-        <Ionicons name={(badge.icon as any) ?? 'medal'} size={22} color={unlocked ? theme.primary : theme.textMuted} />
+        <Ionicons name={(badge.icon as any) ?? 'medal'} size={22} color={unlocked ? accent : theme.textMuted} />
       </View>
 
       <View style={{ flex: 1 }}>
