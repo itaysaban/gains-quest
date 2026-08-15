@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import type { Badge, PersonalRecord, Streak, UserBadge, UserLevel } from '@/types/domain';
@@ -29,6 +29,40 @@ export function useStreak() {
       const { data, error } = await supabase.from('streaks').select('*').eq('user_id', userId!).single();
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+/** M3 Epic 2 Story 2.5: enables Pause Mode for up to 14 days/quarter (server clamps an over-request
+ * to whatever's left rather than rejecting it). While active, fn_update_streak holds the counter —
+ * no increment, no break — for every day in the window. */
+export function useEnablePauseMode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (days: number): Promise<{ paused_until: string; days_granted: number; days_remaining_this_quarter: number }> => {
+      const { data, error } = await supabase.rpc('fn_enable_pause_mode', { p_days: days });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['streak'] });
+    },
+  });
+}
+
+/** M3 Epic 2 Story 2.5 (extended): ends Pause Mode early. The pause-day quota already spent this
+ * quarter is not refunded. */
+export function useCancelPauseMode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('fn_cancel_pause_mode');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['streak'] });
     },
   });
 }

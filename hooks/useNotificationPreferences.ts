@@ -26,12 +26,22 @@ export function useUpdateNotificationPreferences() {
   const { session } = useAuth();
   const userId = session?.user.id;
   const queryClient = useQueryClient();
+  const queryKey = ['notification-preferences', userId];
 
   return useMutation({
     mutationFn: async (patch: Partial<NotificationPreferences>) => {
       const { error } = await supabase.from('notification_preferences').update(patch).eq('user_id', userId!);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notification-preferences', userId] }),
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<NotificationPreferences>(queryKey);
+      queryClient.setQueryData<NotificationPreferences>(queryKey, (old) => (old ? { ...old, ...patch } : old));
+      return { previous };
+    },
+    onError: (_err, _patch, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 }

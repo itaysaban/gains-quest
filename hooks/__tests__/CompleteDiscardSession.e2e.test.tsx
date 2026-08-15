@@ -42,6 +42,10 @@ it('useCompleteSession calls fn_complete_session with the session id and clears 
     xp_earned: 120,
     leveled_up: true,
     new_level: 4,
+    // M3 Epic 1 Story 1.1: fn_complete_session now also returns the session's GainPoints total,
+    // additive alongside xp_earned — the client just needs to pass it through correctly for now,
+    // it has no UI destination yet (that's Epic 3 Story 3.3).
+    points_earned: 55,
     prs: [{ exercise_id: 'exercise-1', record_type: 'weight' }],
     new_badges: [{ code: 'first-100kg', name: 'First 100kg', icon: '🏋️', category: 'strength' }],
   };
@@ -56,6 +60,7 @@ it('useCompleteSession calls fn_complete_session with the session id and clears 
   const rpcCall = supabaseMockCalls.find((c) => c.table === 'rpc:fn_complete_session');
   expect(rpcCall?.args[0]).toEqual({ p_session_id: 'session-1' });
   expect(result.current.data).toEqual(rpcResult);
+  expect(result.current.data?.points_earned).toBe(55);
 
   await waitFor(() => expect(useSessionStore.getState().sessionId).toBeNull());
 });

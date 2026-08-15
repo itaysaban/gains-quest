@@ -13,8 +13,6 @@ export function StreakHeroCard({ streak }: { streak: Streak }) {
       style={{
         backgroundColor: theme.surface,
         borderRadius: radius.xl,
-        borderWidth: 1,
-        borderColor: theme.border,
         padding: spacing.lg,
         flexDirection: 'row',
         alignItems: 'center',
@@ -26,19 +24,19 @@ export function StreakHeroCard({ streak }: { streak: Streak }) {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
-          width: 64,
-          height: 64,
-          borderRadius: radius.lg,
+          width: 72,
+          height: 72,
+          borderRadius: radius.xl,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name="flame" size={32} color="#FFFFFF" />
+        <Ionicons name="flame" size={36} color="#FFFFFF" />
       </LinearGradient>
 
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
-          <Text style={{ fontSize: 32, fontWeight: '800', color: theme.primary }}>{streak.current_streak_days}</Text>
+          <Text style={{ fontSize: 40, fontWeight: '800', color: theme.primary }}>{streak.current_streak_days}</Text>
         </View>
         <Text color="muted" variant="caption">
           Days Streak 🔥
@@ -49,7 +47,7 @@ export function StreakHeroCard({ streak }: { streak: Streak }) {
         <Text color="muted" variant="caption">
           Personal Best
         </Text>
-        <Text weight="700">{streak.longest_streak_days} days</Text>
+        <Text style={{ fontSize: 18, fontWeight: '700' }}>{streak.longest_streak_days} days</Text>
       </View>
     </View>
   );

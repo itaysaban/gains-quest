@@ -11,6 +11,7 @@ import { useUserLevel, useStreak } from '@/hooks/useGamification';
 import { useTodayPlan } from '@/hooks/useTodayPlan';
 import { useProfile } from '@/hooks/useProfile';
 import { useStartSession } from '@/hooks/useWorkoutSession';
+import { useStreakReminder } from '@/hooks/useStreakReminder';
 import { supabase } from '@/lib/supabase';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { RoutineExerciseWithDetails } from '@/types/domain';
@@ -23,6 +24,7 @@ export default function Home() {
   const { data: streak } = useStreak();
   const { data: todayRoutines, isLoading: loadingPlan } = useTodayPlan();
   const startSession = useStartSession();
+  useStreakReminder();
 
   async function handleStartRoutine(routineId: string) {
     const { data, error } = await supabase

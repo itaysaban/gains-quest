@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useSessionStore } from '@/store/sessionStore';
 import { mutationKeys } from '@/lib/mutationKeys';
+import { trainingLocalDate } from '@/lib/utils/date';
 import type { CompleteSessionResult, SessionExerciseWithSets, WorkoutSession } from '@/types/domain';
 import type { RoutineExerciseWithDetails } from '@/types/domain';
 
@@ -42,7 +43,7 @@ export function useStartSession() {
       routineExercises?: RoutineExerciseWithDetails[];
       workoutType?: string | null;
     }) => {
-      const localDate = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd in the device's local timezone
+      const localDate = trainingLocalDate(); // yyyy-mm-dd, with the 4am grace window for late-night training
       const { data: newSession, error } = await supabase
         .from('workout_sessions')
         .insert({
@@ -184,6 +185,43 @@ export function useDiscardSession() {
     },
     onSuccess: () => {
       endSessionStore();
+      queryClient.invalidateQueries({ queryKey: ['workout-sessions'] });
+    },
+  });
+}
+
+/** M3 Epic 1 Story 1.5 (FR10): deletes a *completed* session and reverses its GainPoints via
+ * negative point_ledger entries. Distinct from useDiscardSession, which abandons an in-progress
+ * session without ever having awarded points to reverse. No screen calls this yet — there's no
+ * delete-a-past-workout UI in the app — this is the server-backed capability ready for one. */
+export function useDeleteCompletedSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase.rpc('fn_delete_completed_session', { p_session_id: sessionId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout-sessions'] });
+    },
+  });
+}
+
+/** M3 Epic 1 Story 1.5 (FR11): recalculates a completed session's GainPoints — reverses the
+ * original award and re-awards based on the session's current (possibly just-edited) sets. Server
+ * rejects sessions completed more than 48h ago. No edit-a-past-workout UI exists yet; ready for one. */
+export function useRecalculateSessionPoints() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { data, error } = await supabase.rpc('fn_recalculate_session_points', { p_session_id: sessionId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_data, sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-session', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['workout-sessions'] });
     },
   });

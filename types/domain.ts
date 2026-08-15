@@ -12,6 +12,7 @@ export type PersonalRecord = Database['public']['Tables']['personal_records']['R
 export type ExerciseCurrentBest = Database['public']['Tables']['exercise_current_best']['Row'];
 export type BodyMeasurement = Database['public']['Tables']['body_measurements']['Row'];
 export type XpEvent = Database['public']['Tables']['xp_events']['Row'];
+export type PointLedgerEntry = Database['public']['Tables']['point_ledger']['Row'];
 export type UserLevel = Database['public']['Tables']['user_levels']['Row'];
 export type Streak = Database['public']['Tables']['streaks']['Row'];
 export type Badge = Database['public']['Tables']['badges']['Row'];

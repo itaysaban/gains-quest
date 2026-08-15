@@ -1,4 +1,4 @@
-import { format, formatDistanceToNowStrict, differenceInSeconds, eachDayOfInterval, subDays } from 'date-fns';
+import { format, formatDistanceToNowStrict, differenceInSeconds, eachDayOfInterval, subDays, startOfQuarter } from 'date-fns';
 
 export function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -27,4 +27,18 @@ export function lastNDays(n: number): Date[] {
 
 export function isoDateOnly(date: Date): string {
   return format(date, 'yyyy-MM-dd');
+}
+
+/** The "training day" a session starting right now belongs to, per the streak's 4am grace window
+ * (M3 Epic 2 Story 2.4 / PRD 6.3): a session started before 4am local counts toward the *previous*
+ * calendar day, so training past midnight doesn't get penalized for crossing into a new date. */
+export function trainingLocalDate(date: Date = new Date()): string {
+  const effective = date.getHours() < 4 ? subDays(date, 1) : date;
+  return isoDateOnly(effective);
+}
+
+/** Matches Postgres's date_trunc('quarter', ...) — used to tell whether a streak row's
+ * pause_quarter_start is still the current quarter (M3 Epic 2 Story 2.5). */
+export function isoQuarterStart(date: Date = new Date()): string {
+  return isoDateOnly(startOfQuarter(date));
 }

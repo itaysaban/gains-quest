@@ -13,6 +13,7 @@ export type SetType = 'warmup' | 'working' | 'drop' | 'failure';
 export type PrRecordType = 'max_weight' | 'max_reps_at_weight' | 'est_1rm' | 'session_volume' | 'best_set_volume';
 export type MeasurementType = 'bodyweight' | 'body_fat_pct' | 'circumference';
 export type XpEventType = 'set_logged' | 'session_completed' | 'streak_bonus' | 'badge_unlocked';
+export type PointSource = 'base' | 'volume' | 'cardio' | 'pr' | 'routine' | 'achievement';
 export type BadgeCategory = 'strength' | 'consistency' | 'exploration' | 'volume';
 
 export interface CustomFieldDef {
@@ -306,6 +307,20 @@ export interface Database {
           notes?: string | null;
         }
       >;
+      point_ledger: ReadOnlyTable<{
+        id: string;
+        user_id: string;
+        source: PointSource;
+        session_id: string | null;
+        achievement_id: string | null;
+        points: number;
+        season_id: string;
+        // True when this session had an implausible single-session load jump (>40% over any prior
+        // session's max for that exercise) — accepted and awarded in full, just excluded from M4
+        // leaderboard ranking pending review. Not yet consumed anywhere (leaderboards are M4).
+        excluded_from_ranking: boolean;
+        created_at: string;
+      }>;
       xp_events: ReadOnlyTable<{
         id: string;
         user_id: string;
@@ -330,8 +345,20 @@ export interface Database {
         current_streak_days: number;
         longest_streak_days: number;
         last_workout_date: string | null;
-        streak_freezes_available: number;
+        // M3 Epic 2 Story 2.2: renamed from streak_freezes_available (was uncapped/defaulted to 1;
+        // now capped at 2, earned every 7 streak-days) — not read anywhere in the client yet.
+        freezes_banked: number;
         streak_freeze_used_dates: string[];
+        // M3 Epic 2 Story 2.1: this week's consumed rest-allowance days, and the ISO week-start date
+        // it's counted against. rest_allowance itself is never stored — derived on the server as
+        // 7 - profiles.weekly_goal_days.
+        rest_used_this_week: number;
+        rest_week_start: string | null;
+        // M3 Epic 2 Story 2.5.
+        paused_until: string | null;
+        pause_started_at: string | null;
+        pause_days_used_this_quarter: number;
+        pause_quarter_start: string | null;
         updated_at: string;
       }>;
       badges: ReadOnlyTable<{
@@ -398,6 +425,7 @@ export interface Database {
           xp_earned: number;
           leveled_up: boolean;
           new_level: number;
+          points_earned: number;
           prs: { exercise_id: string; exercise_name: string; record_type: PrRecordType; value: number }[];
           new_badges: { code: string; name: string; icon: string; category: BadgeCategory }[];
         };
@@ -405,6 +433,22 @@ export interface Database {
       fn_duplicate_routine: {
         Args: { p_routine_id: string; p_new_name?: string | null };
         Returns: string;
+      };
+      fn_delete_completed_session: {
+        Args: { p_session_id: string };
+        Returns: undefined;
+      };
+      fn_recalculate_session_points: {
+        Args: { p_session_id: string };
+        Returns: number;
+      };
+      fn_enable_pause_mode: {
+        Args: { p_days: number };
+        Returns: { paused_until: string; days_granted: number; days_remaining_this_quarter: number };
+      };
+      fn_cancel_pause_mode: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;

@@ -10,6 +10,7 @@ import { useTheme, spacing } from '@/lib/theme';
 const ROWS: { label: string; route: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { label: 'Units', route: '/(tabs)/settings/units', icon: 'scale-outline' },
   { label: 'Weekly Goal', route: '/(tabs)/settings/weekly-goal', icon: 'flag-outline' },
+  { label: 'Pause Mode', route: '/(tabs)/settings/pause-mode', icon: 'pause-circle-outline' },
   { label: 'Notifications', route: '/(tabs)/settings/notifications', icon: 'notifications-outline' },
 ];
 

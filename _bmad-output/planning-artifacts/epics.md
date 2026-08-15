@@ -12,6 +12,25 @@ This document provides the epic and story breakdown for GainQuest's **M3 milesto
 
 **Load-bearing discovery from requirements extraction:** M3 is not greenfield. `supabase/migrations/20260811000006_gamification.sql` and `20260813000001_badge_points.sql` already implement a working XP/Level/Streak/Badge system, wired into `fn_complete_session` (M1/M2's session-completion RPC). That system uses a materially different model than this PRD (XP+Levels vs. GainPoints-only; a simple 1-freeze streak vs. rest-allowance + earned-freeze; an 8-badge catalogue vs. the PRD's 10). Per user decision (2026-08-14): **full replace** — retire the XP/Level system and the old streak/badge logic, build the PRD's model as their direct replacement, with a clean cutover (no production user data to migrate, per assumption confirmed at requirements-gathering).
 
+## Implementation Status (updated 2026-08-14)
+
+- **Epic 1 (Earn GainPoints From Every Session): DONE, live-Postgres verified 2026-08-15.** All 5 stories shipped — `supabase/migrations/20260814000006_point_ledger.sql` through `20260814000010_point_reversal_recalc.sql`, plus `types/database.types.ts`/`types/domain.ts` updates and hook tests. Strictly additive per the resequencing note on Story 1.1: the old XP/Level system is untouched and still running; `point_ledger` accumulates in parallel with no UI reading it yet. Typecheck + full test suite green (131 tests).
+  - **Scope note:** Story 1.5's delete/recalculate capability is server + hook only — no delete/edit-a-past-workout UI exists anywhere in the app yet, discovered during implementation (not a pre-existing screen this story was supposed to wire into).
+- **Epic 2 (Build and Protect a Training Streak): DONE, live-Postgres verified 2026-08-15.** All 6 stories shipped — `supabase/migrations/20260814000011_streak_rest_allowance_freezes.sql` (Stories 2.1-2.4: rest allowance derived from the existing `profiles.weekly_goal_days`, earned/banked freezes capped at 2, day-by-day break evaluation, 4am-grace local-date boundary via `lib/utils/date.ts`'s `trainingLocalDate`), `20260814000012_streak_recalculation.sql` (Story 2.3's `fn_rebuild_streak` full-replay on delete/edit), and `20260814000013_pause_mode.sql` (Story 2.5: `fn_enable_pause_mode`, clamped to the remaining quarterly budget rather than rejected). Story 2.6's reminder/at-risk notification policy lives client-side in `lib/notifications/streakReminder.ts` (pure decision logic, unit-tested) + `hooks/useStreakReminder.ts` (wired into Home), reusing M1's `expo-notifications` local-notification infrastructure and the existing `notification_preferences.streak_warnings_enabled` toggle. New Settings screen `app/(tabs)/settings/pause-mode.tsx` lets a user enable Pause Mode. Typecheck + full test suite green (151 tests).
+  - **Confirmed 2026-08-14 (see notes throughout the Epic 2 stories above):** Pause Mode (FR18) stays separate from the rest allowance (FR13) — different columns, different triggers, never share state. The "logged an injury" AC was dropped from Story 2.6 (no such feature exists anywhere in the app). FR11's 48h edit-block (Epic 1) and FR2's ≥1 set OR ≥10 min base-award rule were both confirmed as-is, no changes needed.
+  - **Scope note:** Story 2.6's "historical training pattern" time-of-day is a simple mode-of-hour over recent completed sessions (falls back to 6pm with no history) — reasonable-call implementation, not spec'd to a specific algorithm in the PRD.
+- **Live-Postgres verification (2026-08-15):** applied all 21 migrations to a real disposable Supabase project and ran 52 scenario tests exercising `fn_complete_session`, `fn_award_points_for_session`, `fn_update_streak`, `fn_rebuild_streak`, `fn_enable_pause_mode`, `fn_delete_completed_session`, and `fn_recalculate_session_points` against real data — the SQL logic in both epics had never actually executed anywhere before this. Found and fixed 3 real bugs (all now patched in the migration files, re-verified green):
+  1. **`fn_update_streak` crashed on every single call** — `select ... from streaks s left join profiles p ... for update` is illegal Postgres (`FOR UPDATE cannot be applied to the nullable side of an outer join`). This means `fn_complete_session` — the RPC every workout completion calls — would have failed 100% of the time in production. Fixed to `for update of s` in `20260814000011` and `20260814000013`.
+  2. **Orphaned old `fn_update_streak(uuid)` overload** left behind when Story 2.4 introduced the new two-arg version — a default parameter doesn't replace a different-arity function in Postgres, so both coexisted. Not actively called by anything live, but a footgun (a stray 1-arg call would have silently run pre-Epic-2 streak logic). Dropped explicitly in `20260814000011`.
+  3. **Backfilled sessions were repairing broken streaks** — a real regression against Story 1.4's AC ("does not repair a currently-broken streak"). It held trivially when Story 1.4 was built (streak logic ignored `local_date` entirely then), but Story 2.4 later started passing a session's own `local_date` into `fn_update_streak` unconditionally, including for backfilled sessions — silently reintroducing exactly the gaming vector Story 1.4 was written to prevent. Fixed in `fn_complete_session` (`20260814000011`) to skip the streak call entirely for a backfilled completion.
+  - **Documentation mismatches found and resolved 2026-08-15 (confirmed with the user):**
+    - Story 1.3's AC had its two example clauses swapped ("45s + 0 sets, or 90s + 2 sets" — literally read, "45s + 0 sets" should stay trivial under the implemented AND-of-both-thresholds rule). Corrected to "45s + 2 sets, or 90s + 0 sets", each of which clears exactly one threshold. The implementation was already correct against the intended meaning; only the doc text was wrong.
+    - Story 1.4's AC requires "established history (≥3 prior sessions)" before flagging an implausible load jump, but the shipped code flagged on any single prior session. User chose to tighten the code to match the AC — `fn_award_points_for_session` (`20260814000010_point_reversal_recalc.sql`) now counts distinct prior sessions and only flags when ≥3 exist.
+  - Test harness (Node + `pg`, throwaway Supabase project) is in the scratchpad, not committed to the repo — SQL logic itself is now verified, this was a one-time check rather than a durable CI asset. 58 scenario assertions total (28 Epic 1, 30 Epic 2), all green after the above fixes.
+- **Production deployment gap found 2026-08-15:** none of migrations `20260814000006` through `20260814000013` (all of Epic 1 and Epic 2) had ever been applied to the production Supabase project — confirmed via `fn_enable_pause_mode` failing with a PostgREST "not found in schema cache" error during manual testing, then a column/function existence sweep pinpointing the exact boundary (`20260814000001`-`20260814000005` were live; everything from `20260814000006` on was not). User deployed the 8 pending files as one consolidated script via the production SQL Editor. **`supabase_migrations.schema_migrations` does not exist on this project** — migrations have never been tracked via the Supabase CLI here, so this kind of drift can recur; worth setting up CLI-tracked migrations (`supabase link` + `supabase db push`) at some point so "what's live" stops requiring a manual diagnostic query.
+- **Story 2.5 extended 2026-08-15:** added `fn_cancel_pause_mode` (`20260815000001_pause_mode_cancel.sql`) + an "End Pause Mode" button, found missing during the user's manual production testing — see the added AC on Story 2.5 above. Code is built, typechecked, and passes 5 new live-Postgres scenario tests (58 total now) against the test project — **but per user decision 2026-08-15, deployment to production is deferred and will be bundled with Epic 3's migrations as one batch, rather than deployed standalone.** User does not want one-off SQL scripts handed over for every small fix going forward; Epic 3's eventual production deploy should be the next one, covering this plus everything Epic 3 adds.
+- **Epic 3 (Unlock Achievements in the Achievement Hall): NOT STARTED.** Next up. Depends on Epic 1 (done, live-verified, deployed to production) + Epic 2 (done, live-verified, deployed to production) for display data; also carries the deferred hard-cutover from Story 1.1 (see Story 3.3's extended ACs).
+
 ## Requirements Inventory
 
 ### Functional Requirements
@@ -33,7 +52,7 @@ FR11: Editing a completed session (within 48 hours) triggers GP recalculation.
 **Streaks (replacing the existing simple model)**
 
 FR12: A streak counts consecutive calendar days with at least one completed session.
-FR13: Each user has a configurable weekly rest allowance (default 2, range 1-4); a gap day automatically consumes an allowance and the streak continues; the allowance resets weekly and does not roll over.
+FR13: Each user has a weekly rest allowance derived from their intended training frequency — `rest_allowance = 7 − training_days_per_week` (a new per-user setting, 1-7 days/week, default 4) — answering the PRD's own open question in §11 ("Should the rest allowance be a user setting or inferred from their routine's training days?") in favor of inference. A gap day automatically consumes an allowance and the streak continues; the allowance resets weekly and does not roll over. **[Revised 2026-08-14, user decision]** — originally specified as a flat default-2/configurable-1-4 setting; superseded by this derivation before Epic 2 implementation began. Pause Mode (FR18) is unrelated and unchanged — a separate, explicit, user-triggered hold for injury/illness/travel, not a weekly mechanic.
 FR14: A Streak Freeze is earned at every 7 days of streak (maximum 2 banked); a freeze covers one missed day beyond the rest allowance, is consumed automatically, and is disclosed to the user the next time they open the app.
 FR15: The streak breaks (resets to 0) when a day passes with no session, no remaining rest allowance, and no banked freeze.
 FR16: The streak day boundary is local midnight with a grace window to 04:00 for late-night training; timezone changes never retroactively break a streak.
@@ -120,9 +139,9 @@ So that my progress is measured in the currency the app actually shows me (Point
 **When** it completes
 **Then** a `source: 'cardio'` entry of 1 point per active minute is inserted, capped at 120
 
-**Given** the redefined function
-**When** session completion runs
-**Then** it no longer inserts into `xp_events`, and the `xp_events`, `user_levels`, `level_thresholds` tables and their trigger (`fn_update_user_level`) are dropped in this same migration
+**Given** Home's stat tile (`app/(tabs)/home.tsx`) and the Achievements screen (`app/(tabs)/achievements/index.tsx`) already read `user_levels.total_xp`/`current_level` directly for live UI (`XpBar`, a "LEVEL N" label) — discovered during implementation, not caught at requirements time
+**When** this story ships
+**Then** it is strictly additive: the existing `xp_events`/`user_levels`/`level_thresholds` system, `fn_process_logged_set`'s per-set XP insert, and `fn_complete_session`'s existing session-completion XP insert are all left **completely unchanged and still running** — the new `point_ledger` inserts happen alongside them, not instead of them. Nothing currently on screen changes value or behavior. The hard cutover (drop old tables/functions, swap Home + Achievements to read GP, remove the now-redundant XP inserts) is Story 3.3's job, once Epics 1 and 2's data is live and the new Hall UI has somewhere to display it.
 
 **Given** a malicious or buggy client
 **When** it attempts to submit a point total directly (not via `fn_complete_session`)
@@ -172,9 +191,9 @@ So that a leaderboard built on these points (M4) is worth winning.
 **When** it completes
 **Then** zero point_ledger entries are inserted for it
 
-**Given** a session lasting 45 seconds with 0 completed sets, or 90 seconds with 2 completed sets
+**Given** a session lasting 45 seconds with 2 completed sets, or 90 seconds with 0 completed sets
 **When** it completes
-**Then** normal point rules apply (the 60-second/2-set guardrail is an AND of both thresholds, not either alone)
+**Then** normal point rules apply (the 60-second/2-set guardrail is an AND of both thresholds, not either alone — each example clears exactly one threshold, which is enough to escape it) **[corrected 2026-08-15: the example values were swapped in the original wording — "45s+0 sets" would actually satisfy both thresholds and should stay trivial; verified against the shipped implementation, which was already correct]**
 
 ### Story 1.4: Discount backfilled sessions and flag implausible load jumps
 
@@ -228,29 +247,37 @@ So that my lifetime GP is something I can trust.
 
 A consistency-focused user's streak survives planned rest days via a weekly allowance, earns freezes for unplanned gaps, can be paused guilt-free, and always shows a permanent best even after a break. Replaces the current single-freeze streak model.
 
-### Story 2.1: Add a weekly rest allowance, replacing the single-freeze model
+### Story 2.1: Add a weekly rest allowance derived from training frequency, replacing the single-freeze model
 
 As a consistency seeker,
-I want planned rest days to not threaten my streak,
-So that resting doesn't feel like punishment.
+I want my planned rest days — based on how often I actually intend to train — to not threaten my streak,
+So that resting on the days I never intended to train doesn't feel like punishment.
 
 **Acceptance Criteria:**
 
-**Given** the `streaks` table
-**When** this migration runs
-**Then** it gains `rest_allowance int not null default 2` (user-configurable 1-4) and `rest_used_this_week int not null default 0`
+**Given** `profiles.weekly_goal_days` already exists (smallint, 1-7, default 3) with a fully-built settings screen (`app/(tabs)/settings/weekly-goal.tsx`, copy: "How many days a week do you want to train? This drives your streak...") — discovered during implementation; no new column or UI needed, this is exactly the "intended training days per week" setting
+**When** this story ships
+**Then** it adds no new profile column — `weekly_goal_days` is reused as-is
 
-**Given** a user with the default allowance (2) who has used 0 this week
+**Given** `streaks` gains `rest_used_this_week int not null default 0` (no separate `rest_allowance` column — it's derived, not stored, to avoid a second source of truth that could drift from `weekly_goal_days`)
+**When** the weekly rest allowance is needed anywhere (streak update, later UI display)
+**Then** it is computed as `7 - weekly_goal_days` (e.g. 4 goal days/week -> 3 rest days/week; 6 goal days/week -> 1 rest day/week)
+
+**Given** a user whose goal is 4 days/week (rest_allowance = 3) and has used 0 rest days this week
 **When** a calendar day passes with no completed session
 **Then** `rest_used_this_week` increments to 1, `current_streak_days` is unchanged (not broken, not incremented)
 
-**Given** a user who has already used both rest days this week
-**When** a third consecutive gap day occurs (and no freeze is available — see Story 2.2)
+**Given** a user who has already used their full derived allowance this week
+**When** another consecutive gap day occurs (and no freeze is available — see Story 2.2)
 **Then** the streak breaks per Story 2.3's break condition
 
 **Given** a new calendar week begins (per the user's locale week start)
 **When** the first session-check of that week runs
 **Then** `rest_used_this_week` resets to 0 — unused allowance does not carry over
+
+**Given** a user changes `training_days_per_week` mid-week (e.g. 4 -> 6, shrinking their allowance from 3 to 1)
+**When** they have already used 2 rest days this week under the old allowance
+**Then** they are not retroactively penalized this week — the new (lower) allowance applies starting next week, not by breaking a streak that was valid under the allowance in effect when the rest days were actually taken
 
 ### Story 2.2: Earn and bank Streak Freezes for gaps beyond the allowance
 
@@ -326,6 +353,8 @@ As a lifter dealing with injury, illness, or travel,
 I want to pause my streak instead of losing it,
 So that GainQuest never pressures me to train while I shouldn't.
 
+**Confirmed 2026-08-14, unchanged from the original PRD spec**: Pause Mode is explicit and user-triggered, separate from Story 2.1's weekly rest allowance — the two are not the same mechanic and don't share state.
+
 **Acceptance Criteria:**
 
 **Given** `streaks` gains a `paused_until date` column and a way to track quarterly pause-days used (e.g. `pause_days_used_this_quarter int not null default 0`)
@@ -334,7 +363,7 @@ So that GainQuest never pressures me to train while I shouldn't.
 
 **Given** a user has already used 10 pause-days this quarter
 **When** they request an 8-day pause
-**Then** the request is rejected or clamped to 4 remaining days — confirm which behavior with the user; the PRD specifies the 14-day/quarter cap but not the over-request behavior
+**Then** the request is clamped to the 4 remaining days, not rejected **[decided 2026-08-14: clamp, not reject — never blocks the user outright, consistent with every other wellbeing mechanic in this epic]**
 
 **Given** Pause Mode is active
 **When** any streak-related notification would otherwise fire (Story 2.6)
@@ -343,6 +372,10 @@ So that GainQuest never pressures me to train while I shouldn't.
 **Given** a paused window ends
 **When** the user resumes normal activity
 **Then** streak evaluation resumes exactly where it left off — the pause neither advances nor breaks the streak, it's a true hold
+
+**Given** an active Pause Mode window
+**When** the user chooses to end it early
+**Then** `paused_until`/`pause_started_at` are cleared immediately and streak evaluation resumes right away — the pause-days already spent this quarter are not refunded **[added 2026-08-15: found missing during manual production testing — the original AC only covered enabling a pause and it expiring naturally; a real user who over-requested days, or recovered sooner than expected, needs a way out rather than waiting out the window. `fn_cancel_pause_mode` + an "End Pause Mode" button on the Pause Mode settings screen.]**
 
 ### Story 2.6: Send streak reminder and at-risk notifications, respectfully
 
@@ -360,9 +393,9 @@ So that GainQuest doesn't nag me.
 **When** evening arrives with no session logged
 **Then** no "at risk" nudge fires — only a day where allowance AND freezes are both exhausted, and no session yet logged, triggers the at-risk nudge
 
-**Given** Pause Mode is active, or the user has logged an injury (existing profile/settings flag if present, otherwise treat as an assumption to confirm)
+**Given** Pause Mode is active
 **When** any streak notification would otherwise fire
-**Then** it is suppressed
+**Then** it is suppressed **["logged an injury" dropped from this AC 2026-08-14 — confirmed no such flag/feature exists anywhere in the app; not invented for this story]**
 
 **Given** any streak notification copy
 **When** it is written
@@ -433,6 +466,11 @@ So that my progress feels consolidated, not scattered.
 **Given** "current season rank" (a stat tile listed in the PRD's Achievement Hall spec but dependent on M4's seasonal leaderboards, which don't exist yet)
 **When** the Hall renders
 **Then** it shows a graceful placeholder (e.g. "—" or "Coming soon"), never an error, a fake number, or a crash
+
+**Given** this story's new GP/streak-based Hall display now has somewhere to show the data Epic 1 Story 1.1 deferred (added 2026-08-14: the hard cutover deferred from Story 1.1, since Home/Achievements previously had no GP UI to switch to)
+**When** this story ships
+**Then** it also: (a) updates `app/(tabs)/home.tsx`'s "Points" stat tile and removes `XpBar` in favor of the new lifetime-GP display, (b) removes the session-completion XP insert in `fn_complete_session` and the per-set XP insert in `fn_process_logged_set` (both now fully superseded by `point_ledger`), (c) drops `xp_events`, `user_levels`, `level_thresholds`, `fn_calculate_set_xp`, and `fn_update_user_level`, and (d) removes the `user_levels` bootstrap insert from `handle_new_user()`
+**And** this is the *last possible moment* to do this safely — it must not ship before Epic 1 and Epic 2's data is verified live and correct, since there is no going back to the old numbers once the old tables are dropped
 
 ### Story 3.4: Show the badge grid with locked and unlocked states
 
