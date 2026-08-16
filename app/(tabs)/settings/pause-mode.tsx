@@ -3,24 +3,49 @@ import { View, Pressable, Alert } from 'react-native';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
-import { useStreak, useEnablePauseMode, useCancelPauseMode } from '@/hooks/useGamification';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { useStreak, useEnablePauseMode, useCancelPauseMode, usePauseDaysUsedThisQuarter } from '@/hooks/useGamification';
 import { useTheme, spacing, radius } from '@/lib/theme';
-import { isoQuarterStart, trainingLocalDate, formatShortDate } from '@/lib/utils/date';
+import { trainingLocalDate, formatShortDate } from '@/lib/utils/date';
 
 const MAX_PAUSE_DAYS = 14;
 
 export default function PauseModeSettings() {
   const theme = useTheme();
-  const { data: streak } = useStreak();
+  const { data: streak, isLoading: streakLoading, error: streakError, refetch: refetchStreak } = useStreak();
+  const {
+    data: usedThisQuarter,
+    isLoading: usedLoading,
+    error: usedError,
+    refetch: refetchUsed,
+  } = usePauseDaysUsedThisQuarter();
   const enablePause = useEnablePauseMode();
   const cancelPause = useCancelPauseMode();
   const [days, setDays] = useState(7);
 
-  if (!streak) return null;
+  const error = streakError ?? usedError;
+  if (error) {
+    return (
+      <Screen scroll>
+        <View style={{ gap: spacing.md, alignItems: 'flex-start' }}>
+          <Text weight="700">Couldn't load Pause Mode</Text>
+          <Text color="muted">{(error as any)?.message ?? 'Something went wrong.'}</Text>
+          <Button
+            label="Try again"
+            variant="secondary"
+            onPress={() => {
+              refetchStreak();
+              refetchUsed();
+            }}
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (streakLoading || usedLoading || !streak || usedThisQuarter === undefined) return <LoadingState />;
 
   const today = trainingLocalDate();
-  const currentQuarterStart = isoQuarterStart();
-  const usedThisQuarter = streak.pause_quarter_start === currentQuarterStart ? streak.pause_days_used_this_quarter : 0;
   const remaining = Math.max(0, MAX_PAUSE_DAYS - usedThisQuarter);
   const isPaused = !!streak.paused_until && streak.paused_until >= today;
 
@@ -34,14 +59,19 @@ export default function PauseModeSettings() {
   }
 
   function handleCancel() {
-    Alert.alert('End Pause Mode?', "Your streak will start counting again immediately. Days already used from this quarter's budget won't be refunded.", [
+    Alert.alert('End Pause Mode?', 'Your streak will start counting again immediately. Only days you actually rested (no workout logged) count toward this quarter’s budget — days you trained through, or hadn’t reached yet, are never charged.', [
       { text: 'Keep Paused', style: 'cancel' },
       {
         text: 'End Pause Mode',
         style: 'destructive',
         onPress: async () => {
           try {
-            await cancelPause.mutateAsync();
+            const result = await cancelPause.mutateAsync();
+            const message =
+              result.days_used === 0
+                ? "None of your requested days were used — nothing was deducted from this quarter's budget."
+                : `${result.days_used} day${result.days_used === 1 ? '' : 's'} counted toward this quarter's budget.`;
+            Alert.alert('Pause Mode ended', message);
           } catch (e: any) {
             Alert.alert('Could not end Pause Mode', e?.message ?? 'Something went wrong.');
           }

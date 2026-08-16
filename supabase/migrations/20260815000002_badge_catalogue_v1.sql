@@ -15,6 +15,12 @@
 -- friend_count mechanic (it has a full, already-tested AC) and wrote description copy that's honest
 -- about what's actually gated, rather than shipping copy that promises a feature that isn't there.
 -- Flagged in epics.md for confirmation.
+--
+-- `points` is added defensively with IF NOT EXISTS: originally shipped in 20260813000001_badge_points.sql,
+-- which turned out (2026-08-16, discovered via a real deploy failure) to have never actually reached
+-- production, despite an earlier assumption to the contrary based on a documentation comment rather
+-- than a direct check. This migration no longer depends on that one having run.
+alter table public.badges add column if not exists points integer not null default 100;
 
 delete from public.user_badges;
 delete from public.badges;

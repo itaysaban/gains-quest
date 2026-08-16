@@ -58,7 +58,9 @@ function AchievementRow({ badge, unlocked }: { badge: Badge; unlocked: boolean }
           backgroundColor: unlocked ? `${accent}33` : theme.surfaceAlt,
         }}
       >
-        <Ionicons name={(badge.icon as any) ?? 'medal'} size={22} color={unlocked ? accent : theme.textMuted} />
+        {/* badge.icon is the PRD's "Emoji Banner" (e.g. 🎯) — rendered directly, not looked up as a
+            vector icon name. */}
+        <Text style={{ fontSize: 22 }}>{badge.icon}</Text>
       </View>
 
       <View style={{ flex: 1 }}>

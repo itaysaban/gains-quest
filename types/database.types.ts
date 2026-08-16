@@ -322,6 +322,16 @@ export interface Database {
         excluded_from_ranking: boolean;
         created_at: string;
       }>;
+      // M3 Epic 2 Story 2.5 (redesign): a record of actual pause periods, queried fresh via
+      // fn_pause_days_used_this_quarter rather than a stored/mutated counter. Not read directly by
+      // the client — server functions only.
+      pause_periods: ReadOnlyTable<{
+        id: string;
+        user_id: string;
+        started_at: string;
+        ended_at: string;
+        created_at: string;
+      }>;
       xp_events: ReadOnlyTable<{
         id: string;
         user_id: string;
@@ -447,9 +457,13 @@ export interface Database {
         Args: { p_days: number };
         Returns: { paused_until: string; days_granted: number; days_remaining_this_quarter: number };
       };
+      fn_pause_days_used_this_quarter: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
       fn_cancel_pause_mode: {
         Args: Record<string, never>;
-        Returns: undefined;
+        Returns: { days_refunded: number; days_used: number };
       };
     };
     Enums: Record<string, never>;

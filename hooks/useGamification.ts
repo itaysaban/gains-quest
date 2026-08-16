@@ -47,22 +47,44 @@ export function useEnablePauseMode() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['streak'] });
+      queryClient.invalidateQueries({ queryKey: ['pause-days-used'] });
     },
   });
 }
 
-/** M3 Epic 2 Story 2.5 (extended): ends Pause Mode early. The pause-day quota already spent this
- * quarter is not refunded. */
+/** M3 Epic 2 Story 2.5 (extended): ends Pause Mode early. Refunds every elapsed day the user actually
+ * trained through — only days with no completed session count against the quarterly budget — see
+ * 20260816000004_pause_periods_ledger.sql. */
 export function useCancelPauseMode() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc('fn_cancel_pause_mode');
+    mutationFn: async (): Promise<{ days_refunded: number; days_used: number }> => {
+      const { data, error } = await supabase.rpc('fn_cancel_pause_mode');
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['streak'] });
+      queryClient.invalidateQueries({ queryKey: ['pause-days-used'] });
+    },
+  });
+}
+
+/** M3 Epic 2 Story 2.5 (redesign): how many pause days have actually been used this quarter, computed
+ * fresh from real pause history + workout activity every time — not a stored counter. Supersedes
+ * reading streaks.pause_days_used_this_quarter/pause_quarter_start directly. */
+export function usePauseDaysUsedThisQuarter() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['pause-days-used', userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc('fn_pause_days_used_this_quarter', { p_user_id: userId! });
+      if (error) throw error;
+      return data;
     },
   });
 }
