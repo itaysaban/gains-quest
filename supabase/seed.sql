@@ -1,22 +1,7 @@
--- Level thresholds: xp_required(level) = floor(100 * level^1.5), level 1 starts at 0 XP
-insert into public.level_thresholds (level, xp_required)
-select lvl, floor(100 * power(lvl, 1.5))::int
-from generate_series(1, 100) as lvl
-on conflict (level) do nothing;
-
-update public.level_thresholds set xp_required = 0 where level = 1;
-
--- Badges (Strength / Consistency / Exploration / Volume — PRD 4.5)
-insert into public.badges (code, name, description, category, icon, criteria, points) values
-  ('first_workout', 'First Rep', 'Complete your first workout session.', 'consistency', 'flag', '{"type":"session_count","value":1}', 100),
-  ('streak_7', 'Week Warrior', 'Hit a 7-day training streak.', 'consistency', 'flame', '{"type":"streak_days","value":7}', 500),
-  ('streak_30', '30-Day Streak', 'Hit a 30-day training streak.', 'consistency', 'flame', '{"type":"streak_days","value":30}', 750),
-  ('exercises_10', 'Tried 10 Custom Exercises', 'Create 10 custom exercises.', 'exploration', 'compass', '{"type":"exercise_count_created","value":10}', 250),
-  ('sessions_50', 'Half Century', 'Complete 50 workout sessions.', 'consistency', 'medal', '{"type":"session_count","value":50}', 2000),
-  ('squat_100kg', 'First 100kg Squat', 'Squat 100kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Barbell Back Squat","value":100}', 1000),
-  ('bench_100kg', 'First 100kg Bench', 'Bench press 100kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Barbell Bench Press","value":100}', 1000),
-  ('deadlift_140kg', 'First 140kg Deadlift', 'Deadlift 140kg for the first time.', 'strength', 'trending-up', '{"type":"max_weight_for_exercise","exercise_name":"Conventional Deadlift","value":140}', 1000)
-on conflict (code) do nothing;
+-- Badges are seeded by their own migrations (20260815000002_badge_catalogue_v1.sql, corrected by
+-- 20260816000002_badge_prd_corrections.sql) — the v1.0 catalogue against the real PRD, not this file.
+-- level_thresholds no longer exists (20260817000001_drop_legacy_xp_system.sql, M3 Epic 3 Story 3.3's
+-- hard cutover) — GainPoints (point_ledger) replaced the old XP/level system entirely.
 
 -- Built-in exercise library (system exercises, visible to every user, user_id null)
 insert into public.exercises (user_id, name, category, muscle_groups, equipment, tracking_type, is_system) values

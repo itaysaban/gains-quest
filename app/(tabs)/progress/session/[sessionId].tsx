@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useWorkoutSession, useSessionExercises } from '@/hooks/useWorkoutSession';
+import { useSessionPoints } from '@/hooks/useGamification';
 import { formatShortDate } from '@/lib/utils/date';
 import { spacing } from '@/lib/theme';
 
@@ -12,6 +13,7 @@ export default function SessionDetail() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { data: workoutSession, isLoading: loadingSession } = useWorkoutSession(sessionId);
   const { data: exercises, isLoading: loadingExercises } = useSessionExercises(sessionId);
+  const { data: points } = useSessionPoints(sessionId);
 
   if (loadingSession || loadingExercises || !workoutSession) return <LoadingState />;
 
@@ -26,7 +28,7 @@ export default function SessionDetail() {
         <Card style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
           <Stat label="Volume" value={`${Math.round(workoutSession.total_volume)}kg`} />
           <Stat label="Sets" value={String(workoutSession.total_sets)} />
-          <Stat label="XP" value={`+${workoutSession.xp_earned}`} />
+          <Stat label="GP" value={`+${points ?? 0}`} />
         </Card>
 
         {workoutSession.notes ? (

@@ -1,22 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth/AuthProvider';
-import type { Badge, PersonalRecord, Streak, UserBadge, UserLevel } from '@/types/domain';
-
-export function useUserLevel() {
-  const { session } = useAuth();
-  const userId = session?.user.id;
-
-  return useQuery({
-    queryKey: ['user-level', userId],
-    enabled: !!userId,
-    queryFn: async (): Promise<UserLevel> => {
-      const { data, error } = await supabase.from('user_levels').select('*').eq('user_id', userId!).single();
-      if (error) throw error;
-      return data;
-    },
-  });
-}
+import type { Badge, PersonalRecord, Streak, UserBadge } from '@/types/domain';
 
 export function useStreak() {
   const { session } = useAuth();
@@ -161,6 +146,22 @@ export function useBadgeProgress() {
       const { data, error } = await supabase.rpc('fn_badge_progress', { p_user_id: userId! });
       if (error) throw error;
       return Object.fromEntries(data.map((row) => [row.badge_id, row.current_value]));
+    },
+  });
+}
+
+/** M3 Epic 3 Story 3.3: a single completed session's total GainPoints, summed live from point_ledger
+ * (base/volume/cardio/pr/routine — the same sources fn_award_points_for_session awards, achievement
+ * entries are keyed by badge not session and intentionally excluded) rather than a persisted column —
+ * stays correct even after a recalculation inserts reversal/re-award entries. */
+export function useSessionPoints(sessionId?: string) {
+  return useQuery({
+    queryKey: ['session-points', sessionId],
+    enabled: !!sessionId,
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase.from('point_ledger').select('points').eq('session_id', sessionId!);
+      if (error) throw error;
+      return data.reduce((sum, row) => sum + row.points, 0);
     },
   });
 }

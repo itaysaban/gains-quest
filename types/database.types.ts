@@ -12,7 +12,6 @@ export type SessionStatus = 'in_progress' | 'completed' | 'discarded';
 export type SetType = 'warmup' | 'working' | 'drop' | 'failure';
 export type PrRecordType = 'max_weight' | 'max_reps_at_weight' | 'est_1rm' | 'session_volume' | 'best_set_volume';
 export type MeasurementType = 'bodyweight' | 'body_fat_pct' | 'circumference';
-export type XpEventType = 'set_logged' | 'session_completed' | 'streak_bonus' | 'badge_unlocked';
 export type PointSource = 'base' | 'volume' | 'cardio' | 'pr' | 'routine' | 'achievement';
 // M3 Epic 3 Story 3.1: replaced the old 4-category set with the PRD's v1.0 categories.
 export type BadgeCategory = 'onboarding' | 'cardio' | 'consistency' | 'volume' | 'social' | 'progression' | 'variety';
@@ -181,7 +180,6 @@ export interface Database {
           notes: string | null;
           total_volume: number;
           total_sets: number;
-          xp_earned: number;
           workout_type: string | null;
           local_date: string | null;
           created_at: string;
@@ -332,25 +330,6 @@ export interface Database {
         ended_at: string;
         created_at: string;
       }>;
-      xp_events: ReadOnlyTable<{
-        id: string;
-        user_id: string;
-        session_id: string | null;
-        logged_set_id: string | null;
-        event_type: XpEventType;
-        xp_amount: number;
-        metadata: Json;
-        created_at: string;
-      }>;
-      level_thresholds: ReadOnlyTable<{ level: number; xp_required: number }>;
-      user_levels: ReadOnlyTable<{
-        user_id: string;
-        total_xp: number;
-        current_level: number;
-        xp_into_level: number;
-        xp_for_next_level: number;
-        updated_at: string;
-      }>;
       streaks: ReadOnlyTable<{
         user_id: string;
         current_streak_days: number;
@@ -433,9 +412,6 @@ export interface Database {
           duration_seconds: number;
           total_volume: number;
           total_sets: number;
-          xp_earned: number;
-          leveled_up: boolean;
-          new_level: number;
           points_earned: number;
           prs: { exercise_id: string; exercise_name: string; record_type: PrRecordType; value: number }[];
           new_badges: { code: string; name: string; icon: string; category: BadgeCategory }[];

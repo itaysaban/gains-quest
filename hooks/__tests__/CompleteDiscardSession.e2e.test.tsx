@@ -11,10 +11,10 @@ import { mockSupabaseResponse, resetSupabaseMock, supabaseMockCalls } from '@/li
 import { useSessionStore } from '@/store/sessionStore';
 import { useCompleteSession, useDiscardSession } from '../useWorkoutSession';
 
-// M1/M2 finishing move: fn_complete_session is the single server-authoritative RPC that awards XP,
-// resolves PRs/badges, and (per the hook's onSuccess) must clear the local in-progress-session state
-// and invalidate every screen that depends on it. Discard is the sibling "abandon without crediting
-// anything" path — both must leave the local session store clean afterward.
+// M1/M2 finishing move: fn_complete_session is the single server-authoritative RPC that awards
+// GainPoints, resolves PRs/badges, and (per the hook's onSuccess) must clear the local
+// in-progress-session state and invalidate every screen that depends on it. Discard is the sibling
+// "abandon without crediting anything" path — both must leave the local session store clean afterward.
 
 // Built once per test and closed over — a wrapper that creates its QueryClient inline would mint a
 // fresh one on every re-render, discarding the very mutation state (result.current.data) the test
@@ -39,12 +39,6 @@ it('useCompleteSession calls fn_complete_session with the session id and clears 
     duration_seconds: 1800,
     total_volume: 4500,
     total_sets: 12,
-    xp_earned: 120,
-    leveled_up: true,
-    new_level: 4,
-    // M3 Epic 1 Story 1.1: fn_complete_session now also returns the session's GainPoints total,
-    // additive alongside xp_earned — the client just needs to pass it through correctly for now,
-    // it has no UI destination yet (that's Epic 3 Story 3.3).
     points_earned: 55,
     prs: [{ exercise_id: 'exercise-1', record_type: 'weight' }],
     new_badges: [{ code: 'first-100kg', name: 'First 100kg', icon: '🏋️', category: 'strength' }],
@@ -65,7 +59,7 @@ it('useCompleteSession calls fn_complete_session with the session id and clears 
   await waitFor(() => expect(useSessionStore.getState().sessionId).toBeNull());
 });
 
-it('useDiscardSession marks the session discarded without touching xp/badges, and clears the local session store', async () => {
+it('useDiscardSession marks the session discarded without touching points/badges, and clears the local session store', async () => {
   mockSupabaseResponse('workout_sessions', { data: null, error: null });
 
   const { result } = await renderHook(() => useDiscardSession(), { wrapper: makeWrapper(createTestQueryClient()) });

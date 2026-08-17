@@ -39,9 +39,7 @@ export default function SessionSummary() {
     durationSeconds: string;
     totalVolume: string;
     totalSets: string;
-    xpEarned: string;
-    leveledUp: string;
-    newLevel: string;
+    pointsEarned: string;
     prs: string;
     newBadges: string;
   }>();
@@ -52,8 +50,7 @@ export default function SessionSummary() {
 
   const prs: PrResult[] = params.prs ? JSON.parse(params.prs) : [];
   const newBadges: BadgeResult[] = params.newBadges ? JSON.parse(params.newBadges) : [];
-  const leveledUp = params.leveledUp === 'true';
-  const hasCelebration = prs.length > 0 || newBadges.length > 0 || leveledUp;
+  const hasCelebration = prs.length > 0 || newBadges.length > 0;
 
   useEffect(() => {
     if (hasCelebration) setShowConfetti(true);
@@ -91,16 +88,11 @@ export default function SessionSummary() {
 
           <Card style={{ alignItems: 'center', gap: spacing.xs, backgroundColor: theme.primaryMuted, borderColor: theme.primary }}>
             <Text variant="label" color="primary" weight="700">
-              XP EARNED
+              GP EARNED
             </Text>
             <Text variant="title" color="primary">
-              +{params.xpEarned ?? 0}
+              +{params.pointsEarned ?? 0}
             </Text>
-            {leveledUp ? (
-              <Text weight="700" color="primary">
-                🎉 Level Up! You're now level {params.newLevel}
-              </Text>
-            ) : null}
           </Card>
 
           {prs.length > 0 ? (

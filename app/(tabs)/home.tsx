@@ -6,8 +6,7 @@ import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { XpBar } from '@/components/gamification/XpBar';
-import { useUserLevel, useStreak } from '@/hooks/useGamification';
+import { useLifetimeStats, useStreak } from '@/hooks/useGamification';
 import { useTodayPlan } from '@/hooks/useTodayPlan';
 import { useProfile } from '@/hooks/useProfile';
 import { useStartSession } from '@/hooks/useWorkoutSession';
@@ -20,7 +19,7 @@ export default function Home() {
   const router = useRouter();
   const theme = useTheme();
   const { data: profile } = useProfile();
-  const { data: level } = useUserLevel();
+  const { data: lifetimeStats } = useLifetimeStats();
   const { data: streak } = useStreak();
   const { data: todayRoutines, isLoading: loadingPlan } = useTodayPlan();
   const startSession = useStartSession();
@@ -37,7 +36,7 @@ export default function Home() {
     router.push('/session/active');
   }
 
-  if (!level || !streak) return <LoadingState />;
+  if (!lifetimeStats || !streak) return <LoadingState />;
 
   const todayRoutine = todayRoutines?.[0];
 
@@ -85,13 +84,9 @@ export default function Home() {
         </View>
 
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <StatTile icon="star" label="Points" value={level.total_xp.toLocaleString()} onPress={() => router.push('/(tabs)/achievements')} />
+          <StatTile icon="star" label="Points" value={lifetimeStats.total_gp.toLocaleString()} onPress={() => router.push('/(tabs)/achievements')} />
           <StatTile icon="flame" label="Streak" value={`${streak.current_streak_days}d`} onPress={() => router.push('/(tabs)/achievements')} />
         </View>
-
-        <Card>
-          <XpBar level={level} />
-        </Card>
 
         <View style={{ gap: spacing.sm }}>
           <Text variant="subtitle">Start Today's Routine</Text>
