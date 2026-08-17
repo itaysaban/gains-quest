@@ -1,94 +1,89 @@
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { XpBar } from '@/components/gamification/XpBar';
 import { StreakHeroCard } from '@/components/gamification/StreakHeroCard';
+import { LifetimeCard } from '@/components/gamification/LifetimeCard';
 import { AchievementList } from '@/components/gamification/AchievementList';
-import { useUserLevel, useStreak, useAllBadges, useUserBadges } from '@/hooks/useGamification';
+import {
+  useStreak,
+  useAllBadges,
+  useUserBadges,
+  useLifetimeStats,
+  useBadgeProgress,
+  usePauseDaysUsedThisQuarter,
+} from '@/hooks/useGamification';
 import { useProfile } from '@/hooks/useProfile';
 import { useTheme, spacing, radius } from '@/lib/theme';
 
+/** Achievement Hall — design handoff (design_handoff_gainquest), §7 / PRD §6.4, M3 Epic 3 Story 3.3.
+ * Streak card (rest allowance, freezes, Pause availability) + LIFETIME totals + the full badge grid
+ * with live progress on locked badges. Season rank is an M4 placeholder ("—") — seasonal leaderboards
+ * don't exist yet. */
 export default function Achievements() {
   const router = useRouter();
   const theme = useTheme();
   const { data: profile } = useProfile();
-  const { data: level } = useUserLevel();
   const { data: streak } = useStreak();
   const { data: allBadges, isLoading: loadingBadges } = useAllBadges();
   const { data: userBadges } = useUserBadges();
+  const { data: lifetimeStats } = useLifetimeStats();
+  const { data: badgeProgress } = useBadgeProgress();
+  const { data: pauseDaysUsed } = usePauseDaysUsedThisQuarter();
 
-  if (!level || !streak || loadingBadges) return <LoadingState />;
+  if (!profile || !streak || loadingBadges || !lifetimeStats || !badgeProgress || pauseDaysUsed === undefined) {
+    return <LoadingState />;
+  }
 
   return (
     <Screen scroll>
-      <View style={{ gap: spacing.lg }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Pressable
-            onPress={() => router.push('/(tabs)/settings')}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
-          >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: radius.full,
-                backgroundColor: theme.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+      <View style={{ gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: spacing.xs }}>
+          <Pressable onPress={() => router.push('/(tabs)/settings')} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <LinearGradient
+              colors={[theme.gradientFrom, theme.gradientTo]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ width: 42, height: 42, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Ionicons name="person" size={22} color="#FFFFFF" />
-            </View>
+              <Text font="body" weight="700" size={17}>
+                {(profile.display_name ?? 'A').charAt(0).toUpperCase()}
+              </Text>
+            </LinearGradient>
             <View>
-              <Text weight="700">Hello, {profile?.display_name ?? 'Athlete'}!</Text>
-              <Text variant="caption" color="muted">
-                Let's Crush it! 💪
+              <Text font="body" weight="700" size={17}>
+                Hello, {profile.display_name ?? 'Athlete'}!
+              </Text>
+              <Text font="body" size={13} color="secondary">
+                Let&apos;s crush it
               </Text>
             </View>
           </Pressable>
 
           <Pressable
             onPress={() => router.push('/(tabs)/settings/notifications')}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: radius.full,
-              backgroundColor: theme.primaryMuted,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ width: 38, height: 38, borderRadius: radius.md, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Ionicons name="notifications" size={18} color={theme.primary} />
+            <Text style={{ fontSize: 17 }}>🔔</Text>
           </Pressable>
         </View>
 
-        <Text variant="title">Achievement Hall</Text>
+        <Text font="display" size={34}>
+          Achievement Hall
+        </Text>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text color="muted" variant="caption" weight="600">
-            LEVEL {level.current_level}
-          </Text>
-          <Text color="muted" variant="caption">
-            {level.total_xp.toLocaleString()} total pts
-          </Text>
-        </View>
-        <XpBar level={level} />
+        <StreakHeroCard streak={streak} weeklyGoalDays={profile.weekly_goal_days} pauseDaysUsedThisQuarter={pauseDaysUsed} />
 
-        <StreakHeroCard streak={streak} />
+        <LifetimeCard stats={lifetimeStats} />
 
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="subtitle">Achievements</Text>
-          <AchievementList badges={allBadges ?? []} userBadges={userBadges ?? []} />
-        </View>
+        <AchievementList badges={allBadges ?? []} userBadges={userBadges ?? []} progress={badgeProgress} />
 
         <Pressable
           onPress={() => router.push('/(tabs)/progress')}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm }}
         >
-          <Ionicons name="trending-up" size={18} color={theme.textMuted} />
           <Text color="muted" weight="600">
             View Full Progress Dashboard
           </Text>

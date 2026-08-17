@@ -5,6 +5,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
+import { Barlow_400Regular, Barlow_500Medium, Barlow_600SemiBold, Barlow_700Bold } from '@expo-google-fonts/barlow';
+import { JetBrainsMono_600SemiBold } from '@expo-google-fonts/jetbrains-mono';
 import { AuthProvider, useAuth } from '@/lib/auth/AuthProvider';
 import { queryClient, persistOptions } from '@/lib/queryClient';
 import { registerMutationDefaults } from '@/lib/registerMutationDefaults';
@@ -23,6 +27,19 @@ function RootNavigation() {
   const theme = useTheme();
   useStaleSessionPrompt({ checkOnAppForeground: true });
 
+  // Design handoff (design_handoff_gainquest): Barlow Condensed for display/headings, Barlow for
+  // body, JetBrains Mono for data/labels. Only the weights the spec actually calls for are loaded —
+  // display and mono are always used at one fixed weight (700 / 600 respectively), body needs all
+  // four since Text's `weight` prop can select any of them.
+  const [fontsLoaded] = useFonts({
+    BarlowCondensed_700Bold,
+    Barlow_400Regular,
+    Barlow_500Medium,
+    Barlow_600SemiBold,
+    Barlow_700Bold,
+    JetBrainsMono_600SemiBold,
+  });
+
   useEffect(() => {
     if (isLoading) return;
     if ((segments as string[]).length === 0) return; // still on the root "/" index route — its own <Redirect> owns this transition
@@ -36,7 +53,7 @@ function RootNavigation() {
     }
   }, [session, isLoading, segments, router]);
 
-  if (isLoading) return <LoadingState />;
+  if (isLoading || !fontsLoaded) return <LoadingState />;
 
   return (
     <>

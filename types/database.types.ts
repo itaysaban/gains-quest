@@ -465,6 +465,21 @@ export interface Database {
         Args: Record<string, never>;
         Returns: { days_refunded: number; days_used: number };
       };
+      fn_badge_progress: {
+        Args: { p_user_id: string };
+        Returns: { badge_id: string; current_value: number | null }[];
+      };
+      fn_lifetime_stats: {
+        Args: { p_user_id: string };
+        Returns: {
+          total_gp: number;
+          sessions: number;
+          volume_kg: number;
+          prs: number;
+          badges_unlocked: number;
+          badges_total: number;
+        };
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

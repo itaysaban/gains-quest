@@ -76,16 +76,6 @@ export default function SessionSummary() {
     // documented react-native-screens/expo-router gap. Same fix as session/active.tsx.
     <SafeAreaProvider>
     <Screen scroll>
-      {showConfetti ? (
-        <ConfettiCannon
-          count={120}
-          origin={{ x: Dimensions.get('window').width / 2, y: 0 }}
-          colors={[theme.primary, theme.gradientFrom, theme.gradientTo, theme.warning, '#FFFFFF']}
-          fadeOut
-          onAnimationEnd={() => setShowConfetti(false)}
-        />
-      ) : null}
-
       <ViewShot ref={shotRef} options={{ format: 'png', quality: 0.9 }}>
         <View style={{ gap: spacing.lg, backgroundColor: theme.background, padding: spacing.sm }}>
           <View style={{ alignItems: 'center', gap: spacing.xs, marginTop: spacing.xl }}>
@@ -146,7 +136,9 @@ export default function SessionSummary() {
                       width: 100,
                     }}
                   >
-                    <Ionicons name={(badge.icon as any) ?? 'medal'} size={28} color={theme.primary} />
+                    {/* badge.icon is the PRD's "Emoji Banner" (e.g. 🎯) — rendered directly, same fix
+                        as AchievementList.tsx; this screen has its own separate badge rendering. */}
+                    <Text style={{ fontSize: 28 }}>{badge.icon}</Text>
                     <Text variant="caption" style={{ textAlign: 'center' }}>
                       {badge.name}
                     </Text>
@@ -163,6 +155,22 @@ export default function SessionSummary() {
         <Button label="Done" onPress={() => router.dismissTo('/(tabs)/home')} fullWidth />
       </View>
     </Screen>
+
+    {/* Rendered outside Screen's ScrollView and as the last sibling here, with an explicit zIndex, so
+        it paints on top of the (opaque-background) content instead of underneath it — it was
+        previously a first-child sibling inside the ScrollView's content flow, where the content
+        View's opaque background covered it. pointerEvents="none" lets taps reach the buttons below. */}
+    {showConfetti ? (
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, elevation: 999 }} pointerEvents="none">
+        <ConfettiCannon
+          count={120}
+          origin={{ x: Dimensions.get('window').width / 2, y: 0 }}
+          colors={[theme.primary, theme.gradientFrom, theme.gradientTo, theme.warning, '#FFFFFF']}
+          fadeOut
+          onAnimationEnd={() => setShowConfetti(false)}
+        />
+      </View>
+    ) : null}
     </SafeAreaProvider>
   );
 }

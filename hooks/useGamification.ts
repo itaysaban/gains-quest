@@ -119,6 +119,52 @@ export function useUserBadges() {
   });
 }
 
+export interface LifetimeStats {
+  total_gp: number;
+  sessions: number;
+  volume_kg: number;
+  prs: number;
+  badges_unlocked: number;
+  badges_total: number;
+}
+
+/** M3 Epic 3 Story 3.3 (design handoff): the Achievement Hall's LIFETIME card. Season rank isn't
+ * included — that's an M4 dependency (seasonal leaderboards don't exist yet); render a static
+ * placeholder for it client-side. */
+export function useLifetimeStats() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['lifetime-stats', userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<LifetimeStats> => {
+      const { data, error } = await supabase.rpc('fn_lifetime_stats', { p_user_id: userId! });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** M3 Epic 3 Story 3.3 (design handoff): live progress toward each of the user's still-locked
+ * badges, keyed by badge_id. A null value means that badge's criteria type has no natural "current /
+ * target" reading (e.g. cardio_time_for_distance) — the UI should fall back to the plain requirement
+ * text rather than inventing a fraction. */
+export function useBadgeProgress() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['badge-progress', userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<Record<string, number | null>> => {
+      const { data, error } = await supabase.rpc('fn_badge_progress', { p_user_id: userId! });
+      if (error) throw error;
+      return Object.fromEntries(data.map((row) => [row.badge_id, row.current_value]));
+    },
+  });
+}
+
 export function usePersonalRecords(exerciseId?: string) {
   const { session } = useAuth();
   const userId = session?.user.id;

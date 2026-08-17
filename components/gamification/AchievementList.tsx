@@ -1,12 +1,12 @@
 import { View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme, spacing, radius, type Theme } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import type { Badge, UserBadge } from '@/types/domain';
 import type { BadgeCategory } from '@/types/database.types';
 
-/** M3 Epic 3 Story 3.4: one accent color per badge category, matching the Figma Achievement Hall
- * design (each badge's icon-circle color signals its category at a glance). */
+/** M3 Epic 3 Story 3.4: one accent color per badge category — kept for the icon tile's background
+ * tint even though the design handoff itself doesn't vary tile color by category; it's a reasonable
+ * addition that survives unlocked/locked and reads fine against the new palette. */
 function categoryAccent(theme: Theme, category: BadgeCategory): string {
   const map: Record<BadgeCategory, string> = {
     onboarding: theme.badgeOnboarding,
@@ -20,19 +20,38 @@ function categoryAccent(theme: Theme, category: BadgeCategory): string {
   return map[category];
 }
 
-export function AchievementList({ badges, userBadges }: { badges: Badge[]; userBadges: UserBadge[] }) {
+/** Locked badges whose criteria has a natural "current / target" reading show it appended to the
+ * requirement text, e.g. "Log 100 sessions · 84 / 100" — design handoff §7. `progress` is null for
+ * criteria types with no such reading (see fn_badge_progress); those badges just show the plain
+ * requirement text. */
+function progressSuffix(badge: Badge, currentValue: number | null | undefined): string {
+  if (currentValue == null) return '';
+  const criteria = badge.criteria as { value?: number } | null;
+  const target = criteria?.value;
+  if (typeof target !== 'number') return '';
+  return ` · ${Math.floor(currentValue).toLocaleString()} / ${target.toLocaleString()}`;
+}
+
+interface Props {
+  badges: Badge[];
+  userBadges: UserBadge[];
+  /** badge_id -> current progress value, from useBadgeProgress(). Only covers locked badges. */
+  progress: Record<string, number | null>;
+}
+
+export function AchievementList({ badges, userBadges, progress }: Props) {
   const unlockedIds = new Set(userBadges.map((ub) => ub.badge_id));
 
   return (
-    <View style={{ gap: spacing.sm }}>
+    <View style={{ gap: 9 }}>
       {badges.map((badge) => (
-        <AchievementRow key={badge.id} badge={badge} unlocked={unlockedIds.has(badge.id)} />
+        <AchievementRow key={badge.id} badge={badge} unlocked={unlockedIds.has(badge.id)} currentValue={progress[badge.id]} />
       ))}
     </View>
   );
 }
 
-function AchievementRow({ badge, unlocked }: { badge: Badge; unlocked: boolean }) {
+function AchievementRow({ badge, unlocked, currentValue }: { badge: Badge; unlocked: boolean; currentValue: number | null | undefined }) {
   const theme = useTheme();
   const accent = categoryAccent(theme, badge.category);
 
@@ -43,43 +62,48 @@ function AchievementRow({ badge, unlocked }: { badge: Badge; unlocked: boolean }
         alignItems: 'center',
         gap: spacing.md,
         backgroundColor: theme.surface,
-        borderRadius: radius.lg,
-        padding: spacing.md,
-        opacity: unlocked ? 1 : 0.7,
+        borderRadius: radius.md,
+        padding: 13,
+        opacity: unlocked ? 1 : 0.62,
       }}
     >
       <View
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: radius.full,
+          width: 38,
+          height: 38,
+          borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: unlocked ? `${accent}33` : theme.surfaceAlt,
+          backgroundColor: theme.cardInset,
         }}
       >
         {/* badge.icon is the PRD's "Emoji Banner" (e.g. 🎯) — rendered directly, not looked up as a
             vector icon name. */}
-        <Text style={{ fontSize: 22 }}>{badge.icon}</Text>
+        <Text style={{ fontSize: 18 }}>{badge.icon}</Text>
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text weight="700">{badge.name}</Text>
-        <Text variant="caption" color="muted">
+        <Text font="body" weight="700" size={15} style={{ lineHeight: 17 }}>
+          {badge.name}
+        </Text>
+        <Text font="body" weight="400" size={11} color="muted" style={{ lineHeight: 14, marginTop: 1 }}>
           {badge.description}
+          {unlocked ? '' : progressSuffix(badge, currentValue)}
         </Text>
       </View>
 
-      <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
-        <Text variant="caption" color="muted">
-          {(badge.points ?? 0).toLocaleString()} pts
+      <View style={{ alignItems: 'flex-end', gap: 2 }}>
+        <Text font="display" size={15} style={{ color: theme.gradientFrom }}>
+          {(badge.points ?? 0).toLocaleString()}
         </Text>
-        <Ionicons
-          name={unlocked ? 'checkmark-circle' : 'lock-closed'}
-          size={18}
-          color={unlocked ? theme.success : theme.locked}
-        />
+        <Text font="body" weight="400" size={10} color="muted">
+          pts
+        </Text>
       </View>
+
+      <Text style={{ fontSize: unlocked ? 14 : 13, color: unlocked ? theme.success : theme.textMuted, marginLeft: spacing.xs }}>
+        {unlocked ? '✓' : '🔒'}
+      </Text>
     </View>
   );
 }
