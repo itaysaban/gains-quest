@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { View, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
@@ -99,7 +98,7 @@ export function DraftSetRow({
   const displayWeightValue = displayWeight(draft.weightKg, unit);
 
   return (
-    <View style={{ gap: spacing.sm, backgroundColor: theme.surfaceAlt, borderRadius: radius.md, padding: spacing.sm }}>
+    <View style={{ gap: spacing.sm, backgroundColor: theme.cardInset, borderRadius: radius.md, padding: spacing.sm }}>
       <View style={{ flexDirection: 'row', gap: spacing.xs }}>
         {SET_TYPES.map((type) => (
           <Pressable
@@ -112,7 +111,7 @@ export function DraftSetRow({
               backgroundColor: draft.setType === type ? theme.primary : theme.surface,
             }}
           >
-            <Text variant="label" weight="600" style={{ color: draft.setType === type ? '#FFF' : theme.text }}>
+            <Text font="body" weight="600" size={11} style={{ color: draft.setType === type ? theme.onAccent : theme.text }}>
               {type}
             </Text>
           </Pressable>
@@ -166,7 +165,7 @@ export function DraftSetRow({
             opacity: logSet.isPending ? 0.6 : 1,
           }}
         >
-          <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+          <Text style={{ fontSize: 20, color: theme.onAccent, fontWeight: '700' }}>✓</Text>
         </Pressable>
       </View>
 
@@ -174,7 +173,7 @@ export function DraftSetRow({
         <RpeSlider value={draft.rpe} onChange={(v) => setDraft((d) => ({ ...d, rpe: v }))} />
       ) : (
         <Pressable onPress={() => setRpeExpanded(true)}>
-          <Text variant="label" color="muted" weight="600">
+          <Text font="body" weight="600" size={12} color="muted">
             + Add RPE
           </Text>
         </Pressable>

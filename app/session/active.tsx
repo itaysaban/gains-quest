@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react';
 import { View, ScrollView, Alert, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
-import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SessionTimer } from '@/components/session/SessionTimer';
 import { RestTimerBar } from '@/components/session/RestTimerBar';
 import { ExerciseLogCard } from '@/components/session/ExerciseLogCard';
 import { ExercisePicker } from '@/components/exercise/ExercisePicker';
 import { useSessionStore } from '@/store/sessionStore';
 import {
   useSessionExercises,
+  useWorkoutSession,
   useAddExerciseToSession,
   useCompleteSession,
   useDiscardSession,
@@ -24,7 +22,8 @@ import { usePrefetchCurrentBestForSession } from '@/hooks/useExerciseCurrentBest
 import { useStaleSessionPrompt } from '@/hooks/useStaleSessionPrompt';
 import { useProfile } from '@/hooks/useProfile';
 import { groupBySuperset } from '@/types/domain';
-import { useTheme, spacing } from '@/lib/theme';
+import { useTheme, spacing, radius } from '@/lib/theme';
+import { formatDuration } from '@/lib/utils/date';
 import { supabase } from '@/lib/supabase';
 
 export default function ActiveSession() {
@@ -41,6 +40,7 @@ export default function ActiveSession() {
   useStaleSessionPrompt();
 
   const { data: sessionExercises, isLoading } = useSessionExercises(sessionId);
+  const { data: workoutSession } = useWorkoutSession(sessionId ?? undefined);
   const { data: profile } = useProfile();
   const addExercise = useAddExerciseToSession();
   const removeExercise = useRemoveExerciseFromSession();
@@ -137,6 +137,10 @@ export default function ActiveSession() {
   }
 
   const groups = sessionExercises ? groupBySuperset(sessionExercises) : [];
+  const liveVolume = (sessionExercises ?? [])
+    .flatMap((se) => se.sets)
+    .filter((s) => s.set_type !== 'warmup')
+    .reduce((sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 1), 0);
 
   return (
     // See the SafeAreaProvider note on the "no active workout" return above — same reasoning.
@@ -144,21 +148,34 @@ export default function ActiveSession() {
     <Screen padded={false}>
       <View
         style={{
+          backgroundColor: theme.chrome,
+          paddingTop: spacing.xl,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing.md,
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.border,
+          gap: spacing.md,
         }}
       >
         <Pressable onPress={handleDiscard} hitSlop={8}>
-          <Ionicons name="close" size={26} color={theme.textMuted} />
+          <Text font="body" weight="700" size={20} color="secondary">
+            ✕
+          </Text>
         </Pressable>
-        <SessionTimer />
+        <View style={{ flex: 1 }}>
+          <ActiveSessionHeaderTitle name={workoutSession?.name ?? 'Workout'} isPaused={isPaused} liveVolume={liveVolume} />
+        </View>
         <Pressable onPress={isPaused ? resume : pause} hitSlop={8}>
-          <Ionicons name={isPaused ? 'play-circle' : 'pause-circle'} size={28} color={theme.text} />
+          <Text style={{ fontSize: 20 }}>{isPaused ? '▶️' : '⏸️'}</Text>
+        </Pressable>
+        <Pressable
+          onPress={handleFinish}
+          disabled={finishing}
+          style={{ backgroundColor: theme.primary, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, opacity: finishing ? 0.6 : 1 }}
+        >
+          <Text font="body" weight="700" size={13} style={{ color: theme.onAccent }}>
+            {finishing ? '…' : 'Finish'}
+          </Text>
         </Pressable>
       </View>
 
@@ -173,7 +190,7 @@ export default function ActiveSession() {
           groups.map((group) => (
             <View key={group.groupId ?? group.items[0].id} style={{ gap: spacing.sm }}>
               {group.items.length > 1 ? (
-                <Text variant="label" color="primary" weight="700">
+                <Text font="mono" size={10} color="primary" weight="700" style={{ letterSpacing: 1.5 }}>
                   SUPERSET
                 </Text>
               ) : null}
@@ -195,8 +212,14 @@ export default function ActiveSession() {
           ))
         )}
 
-        <Button label="+ Add Exercise" variant="secondary" onPress={() => setPickerVisible(true)} fullWidth />
-        <Button label="Finish Workout" onPress={handleFinish} loading={finishing} fullWidth />
+        <Pressable
+          onPress={() => setPickerVisible(true)}
+          style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: theme.borderSubtle, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center' }}
+        >
+          <Text font="body" weight="600" size={13} color="secondary">
+            ＋ Add exercise
+          </Text>
+        </Pressable>
       </ScrollView>
 
       <ExercisePicker
@@ -219,5 +242,30 @@ export default function ActiveSession() {
       />
     </Screen>
     </SafeAreaProvider>
+  );
+}
+
+/** Header's "routine name / live mm:ss · kg" line — design handoff §3. Re-derives elapsedSeconds()
+ * every second the same way SessionTimer did (a store method, not reactive state on its own). */
+function ActiveSessionHeaderTitle({ name, isPaused, liveVolume }: { name: string; isPaused: boolean; liveVolume: number }) {
+  const theme = useTheme();
+  const elapsedSeconds = useSessionStore((s) => s.elapsedSeconds);
+  const [, forceTick] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <View style={{ gap: 2 }}>
+      <Text font="body" weight="700" size={17} numberOfLines={1}>
+        {name}
+      </Text>
+      <Text font="mono" size={12} style={{ color: theme.gradientFrom }}>
+        {formatDuration(elapsedSeconds())} · {Math.round(liveVolume).toLocaleString()} kg
+        {isPaused ? ' · paused' : ''}
+      </Text>
+    </View>
   );
 }

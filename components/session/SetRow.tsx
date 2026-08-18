@@ -1,5 +1,4 @@
 import { View, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { formatSetCompact } from './LastSessionRow';
@@ -36,7 +35,7 @@ export function SetRow({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: spacing.sm,
+        paddingVertical: 9,
         gap: spacing.sm,
       }}
     >
@@ -45,27 +44,27 @@ export function SetRow({
           width: 22,
           height: 22,
           borderRadius: radius.sm,
-          backgroundColor: set.set_type === 'warmup' ? theme.surfaceAlt : theme.primaryMuted,
+          backgroundColor: set.set_type === 'warmup' ? theme.cardInset : theme.success,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text variant="label" weight="700" color={set.set_type === 'warmup' ? 'muted' : 'primary'}>
+        <Text font="body" weight="700" size={12} style={{ color: set.set_type === 'warmup' ? theme.textMuted : '#0D2A1A' }}>
           {SET_TYPE_LABEL[set.set_type] || index + 1}
         </Text>
       </View>
-      <Text style={{ flex: 1 }} weight="600">
+      <Text font="mono" weight="600" size={14} style={{ flex: 1, color: set.set_type === 'warmup' ? theme.textMuted : theme.success }}>
         {valueLabel}
       </Text>
       {set.rpe != null ? (
-        <Text variant="caption" color="muted">
+        <Text font="body" size={12} color="muted">
           RPE {set.rpe}
         </Text>
       ) : null}
-      {set.is_pr ? <Ionicons name="trophy" size={16} color={theme.warning} /> : null}
-      {set.set_type === 'failure' ? <Ionicons name="flash" size={16} color={theme.danger} /> : null}
+      {set.is_pr ? <Text style={{ fontSize: 15 }}>🏆</Text> : null}
+      {set.set_type === 'failure' ? <Text style={{ fontSize: 14 }}>⚡</Text> : null}
       <Pressable onPress={onDelete} hitSlop={8}>
-        <Ionicons name="trash-outline" size={18} color={theme.textMuted} />
+        <Text style={{ fontSize: 15, color: theme.textMuted }}>🗑</Text>
       </Pressable>
     </Pressable>
   );

@@ -81,12 +81,12 @@ it('suggests +upper-increment when every working set in the last session hit the
 
   await renderWithProviders(<SessionExercisesHarness sessionId={SESSION_ID} />);
 
-  await waitFor(() => expect(screen.getByText('Try +2.5kg today')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('Hit top of range last time — try +2.5kg')).toBeTruthy());
 
   // Before accepting: draft still shows last time's raw weight, no delta applied yet.
   expect(screen.getByDisplayValue('100')).toBeTruthy();
 
-  fireEvent.press(screen.getByText('Try +2.5kg today'));
+  fireEvent.press(screen.getByText('Hit top of range last time — try +2.5kg'));
 
   // Accepting pre-fills the draft with the suggested weight...
   await waitFor(() => expect(screen.getByDisplayValue('102.5')).toBeTruthy());

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
-import { Ionicons } from '@expo/vector-icons';
 import { useSessionStore } from '@/store/sessionStore';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
@@ -41,43 +40,52 @@ export function RestTimerBar() {
   return (
     <View
       style={{
-        backgroundColor: theme.primaryMuted,
+        backgroundColor: theme.cardInset,
         borderRadius: radius.lg,
-        padding: spacing.md,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,
       }}
     >
-      <Ionicons name="time" size={22} color={theme.primary} />
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text weight="600" color="primary">
-          Resting… {remainingSeconds}s
-        </Text>
-        <View style={{ height: 6, borderRadius: radius.full, backgroundColor: theme.surface, overflow: 'hidden' }}>
-          <View
-            style={{
-              height: '100%',
-              width: `${Math.max(2, ratio * 100)}%`,
-              backgroundColor: theme.primary,
-              borderRadius: radius.full,
-            }}
-          />
-        </View>
+      <Text font="body" weight="600" size={12} color="secondary">
+        Rest
+      </Text>
+      <View style={{ flex: 1, height: 6, borderRadius: radius.full, backgroundColor: theme.borderSubtle, overflow: 'hidden' }}>
+        <View
+          style={{
+            height: '100%',
+            width: `${Math.max(2, ratio * 100)}%`,
+            backgroundColor: theme.primary,
+            borderRadius: radius.full,
+          }}
+        />
       </View>
+      <Text font="mono" weight="700" size={14} style={{ color: theme.gradientFrom }}>
+        {formatMmSs(remainingSeconds)}
+      </Text>
       <Pressable onPress={() => adjustRestTimer(-15)} hitSlop={8}>
-        <Text weight="700" color="primary">
+        <Text font="body" weight="600" size={12} color="secondary">
           -15s
         </Text>
       </Pressable>
       <Pressable onPress={() => adjustRestTimer(15)} hitSlop={8}>
-        <Text weight="700" color="primary">
+        <Text font="body" weight="600" size={12} color="secondary">
           +15s
         </Text>
       </Pressable>
       <Pressable onPress={stopRestTimer} hitSlop={8}>
-        <Ionicons name="close-circle" size={22} color={theme.textMuted} />
+        <Text font="body" weight="600" size={12} color="secondary">
+          Skip
+        </Text>
       </Pressable>
     </View>
   );
+}
+
+function formatMmSs(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }

@@ -1,12 +1,11 @@
-import { Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Pressable, View } from 'react-native';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import { useProgressionSuggestion } from '@/hooks/useProgressionSuggestion';
 import type { Exercise, SessionExercise } from '@/types/domain';
 
-/** Advisory double-progression chip (PRD 6.1.4). Tapping only pre-fills the draft weight — never
- * auto-logs a set. */
+/** Advisory double-progression chip (design handoff §3, PRD §6.1.4). Tapping only pre-fills the
+ * draft weight — never auto-logs a set. */
 export function ProgressionChip({
   exercise,
   sessionExercise,
@@ -22,7 +21,7 @@ export function ProgressionChip({
   if (!suggestion) return null;
 
   const isIncrease = suggestion.type === 'increase';
-  const label = isIncrease ? `Try +${suggestion.deltaKg}kg today` : `Consider ${suggestion.deltaKg}kg (deload)`;
+  const label = isIncrease ? `Hit top of range last time — try +${suggestion.deltaKg}kg` : `Consider ${suggestion.deltaKg}kg (deload)`;
 
   return (
     <Pressable
@@ -30,18 +29,24 @@ export function ProgressionChip({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        alignSelf: 'flex-start',
-        backgroundColor: isIncrease ? theme.primaryMuted : theme.surfaceAlt,
+        gap: spacing.xs,
+        backgroundColor: isIncrease ? '#2A1F0D' : theme.cardInset,
+        borderWidth: 1,
+        borderColor: isIncrease ? '#5C4416' : theme.borderSubtle,
         paddingHorizontal: spacing.sm,
-        paddingVertical: 4,
-        borderRadius: radius.full,
+        paddingVertical: 9,
+        borderRadius: radius.md,
       }}
     >
-      <Ionicons name={isIncrease ? 'trending-up' : 'trending-down'} size={14} color={isIncrease ? theme.primary : theme.textMuted} />
-      <Text variant="label" weight="600" color={isIncrease ? 'primary' : 'muted'}>
+      <Text style={{ fontSize: 13 }}>{isIncrease ? '↗' : '↘'}</Text>
+      <Text font="body" weight="600" size={12} style={{ flex: 1, color: isIncrease ? theme.warning : theme.textSecondary }}>
         {label}
       </Text>
+      <View>
+        <Text font="body" weight="700" size={12} style={{ color: isIncrease ? theme.warning : theme.textSecondary }}>
+          Apply
+        </Text>
+      </View>
     </Pressable>
   );
 }

@@ -41,7 +41,7 @@ export function SetInputAdjuster({ label, value, step, onChange, decimals = 0, u
             width: 32,
             height: 32,
             borderRadius: radius.sm,
-            backgroundColor: theme.surfaceAlt,
+            backgroundColor: theme.cardInset,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -72,7 +72,7 @@ export function SetInputAdjuster({ label, value, step, onChange, decimals = 0, u
             width: 32,
             height: 32,
             borderRadius: radius.sm,
-            backgroundColor: theme.surfaceAlt,
+            backgroundColor: theme.cardInset,
             alignItems: 'center',
             justifyContent: 'center',
           }}
