@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import type { Badge, PersonalRecord, Streak, UserBadge } from '@/types/domain';
+import type { PointSource } from '@/types/database.types';
 
 export function useStreak() {
   const { session } = useAuth();
@@ -160,6 +161,49 @@ export function useSessionPoints(sessionId?: string) {
     enabled: !!sessionId,
     queryFn: async (): Promise<number> => {
       const { data, error } = await supabase.from('point_ledger').select('points').eq('session_id', sessionId!);
+      if (error) throw error;
+      return data.reduce((sum, row) => sum + row.points, 0);
+    },
+  });
+}
+
+/** Session Summary's itemised GAINPOINTS card (design handoff §4, PRD §6.2): "the client never
+ * computes or submits point totals" — every line comes straight from the point_ledger rows this
+ * exact session inserted, summed per source (base/volume/cardio/pr/routine; achievement entries have
+ * no session_id and are correctly excluded — a badge unlock isn't "this session's" points). */
+export function useSessionPointBreakdown(sessionId?: string) {
+  return useQuery({
+    queryKey: ['session-point-breakdown', sessionId],
+    enabled: !!sessionId,
+    queryFn: async (): Promise<{ source: PointSource; points: number }[]> => {
+      const { data, error } = await supabase.from('point_ledger').select('source, points').eq('session_id', sessionId!);
+      if (error) throw error;
+      const bySource = new Map<PointSource, number>();
+      for (const row of data) bySource.set(row.source, (bySource.get(row.source) ?? 0) + row.points);
+      return Array.from(bySource, ([source, points]) => ({ source, points })).filter((row) => row.points !== 0);
+    },
+  });
+}
+
+/** Session Summary's daily-ceiling line ("234 of 400 used today") — sums today's session-sourced GP
+ * the same way fn_award_points_for_session's own ceiling check does (base/volume/cardio/pr/routine;
+ * achievement GP is exempt from the ceiling by design and excluded here too). */
+export function useTodayPointsEarned() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['today-points-earned', userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<number> => {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { data, error } = await supabase
+        .from('point_ledger')
+        .select('points')
+        .eq('user_id', userId!)
+        .in('source', ['base', 'volume', 'cardio', 'pr', 'routine'])
+        .gte('created_at', todayStart.toISOString());
       if (error) throw error;
       return data.reduce((sum, row) => sum + row.points, 0);
     },

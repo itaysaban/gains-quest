@@ -93,6 +93,7 @@ export default function ActiveSession() {
       router.replace({
         pathname: '/session/summary',
         params: {
+          sessionId: sessionId!,
           durationSeconds: String(result.duration_seconds),
           totalVolume: String(result.total_volume),
           totalSets: String(result.total_sets),

@@ -1,13 +1,12 @@
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useLifetimeStats, useStreak } from '@/hooks/useGamification';
 import { useTodayPlan } from '@/hooks/useTodayPlan';
+import { useRoutineExercises } from '@/hooks/useRoutines';
 import { useProfile } from '@/hooks/useProfile';
 import { useStartSession } from '@/hooks/useWorkoutSession';
 import { useStreakReminder } from '@/hooks/useStreakReminder';
@@ -15,6 +14,10 @@ import { supabase } from '@/lib/supabase';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { RoutineExerciseWithDetails } from '@/types/domain';
 
+/** Home — design handoff §1 / PRD §6.5. Rank tile is a static "—" placeholder (same pattern as
+ * Achievement Hall's LIFETIME card Season rank) — tiers/leaderboards don't exist yet (M4). Social
+ * Feed is dropped entirely for the same reason: there's no friends/activity backend to read from,
+ * and a hardcoded feed would misrepresent real functionality. */
 export default function Home() {
   const router = useRouter();
   const theme = useTheme();
@@ -24,6 +27,9 @@ export default function Home() {
   const { data: todayRoutines, isLoading: loadingPlan } = useTodayPlan();
   const startSession = useStartSession();
   useStreakReminder();
+
+  const todayRoutine = todayRoutines?.[0];
+  const { data: todayRoutineExercises } = useRoutineExercises(todayRoutine?.id);
 
   async function handleStartRoutine(routineId: string) {
     const { data, error } = await supabase
@@ -38,106 +44,108 @@ export default function Home() {
 
   if (!lifetimeStats || !streak) return <LoadingState />;
 
-  const todayRoutine = todayRoutines?.[0];
-
   return (
     <Screen scroll>
-      <View style={{ gap: spacing.lg }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Pressable
-            onPress={() => router.push('/(tabs)/settings')}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
-          >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: radius.full,
-                backgroundColor: theme.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+      <View style={{ gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: spacing.xs }}>
+          <Pressable onPress={() => router.push('/(tabs)/settings')} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <LinearGradient
+              colors={[theme.gradientFrom, theme.gradientTo]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ width: 42, height: 42, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Ionicons name="person" size={22} color="#FFFFFF" />
-            </View>
+              <Text font="body" weight="700" size={17}>
+                {(profile?.display_name ?? 'A').charAt(0).toUpperCase()}
+              </Text>
+            </LinearGradient>
             <View>
-              <Text weight="700">Hello, {profile?.display_name ?? 'Athlete'}!</Text>
-              <Text variant="caption" color="muted">
-                Let's Crush it! 💪
+              <Text font="body" weight="700" size={17}>
+                Hello, {profile?.display_name ?? 'Athlete'}!
+              </Text>
+              <Text font="body" size={13} color="secondary">
+                Let&apos;s crush it
               </Text>
             </View>
           </Pressable>
 
           <Pressable
             onPress={() => router.push('/(tabs)/settings/notifications')}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: radius.full,
-              backgroundColor: theme.primaryMuted,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ width: 38, height: 38, borderRadius: radius.md, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Ionicons name="notifications" size={18} color={theme.primary} />
+            <Text style={{ fontSize: 17 }}>🔔</Text>
           </Pressable>
         </View>
 
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <StatTile icon="star" label="Points" value={lifetimeStats.total_gp.toLocaleString()} onPress={() => router.push('/(tabs)/achievements')} />
-          <StatTile icon="flame" label="Streak" value={`${streak.current_streak_days}d`} onPress={() => router.push('/(tabs)/achievements')} />
+          <StatTile emoji="⚡" label="Points" value={lifetimeStats.total_gp.toLocaleString()} onPress={() => router.push('/(tabs)/leaderboard')} />
+          <StatTile emoji="🏆" label="Tier rank" value="—" onPress={() => router.push('/(tabs)/leaderboard')} />
+          <StatTile emoji="🔥" label="Day streak" value={String(streak.current_streak_days)} onPress={() => router.push('/(tabs)/achievements')} />
         </View>
 
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="subtitle">Start Today's Routine</Text>
-          {loadingPlan ? null : todayRoutine ? (
-            <Card onPress={() => handleStartRoutine(todayRoutine.id)} style={{ gap: spacing.xs }}>
-              <Text weight="700" variant="subtitle">
-                {todayRoutine.name}
-              </Text>
-              <Button label="Start" onPress={() => handleStartRoutine(todayRoutine.id)} loading={startSession.isPending} />
-            </Card>
-          ) : (
-            <Card style={{ gap: spacing.sm }}>
-              <Text color="muted">Nothing scheduled today.</Text>
-              <Button label="Go to Add Workout" variant="secondary" onPress={() => router.push('/(tabs)/add-workout')} />
-            </Card>
-          )}
-        </View>
+        {loadingPlan ? null : todayRoutine ? (
+          <Pressable onPress={() => handleStartRoutine(todayRoutine.id)} disabled={startSession.isPending}>
+            <LinearGradient
+              colors={[theme.gradientFrom, theme.gradientTo]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ borderRadius: radius.xl, padding: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.md }}
+            >
+              <View style={{ flex: 1, gap: 5 }}>
+                <Text font="mono" size={11} style={{ color: 'rgba(24,13,2,0.6)', letterSpacing: 1.5 }}>
+                  TODAY · {todayRoutine.name.toUpperCase()}
+                </Text>
+                <Text font="display" size={26} style={{ color: theme.onAccent }}>
+                  {todayRoutine.name}
+                </Text>
+                <Text font="body" weight="500" size={13} style={{ color: 'rgba(24,13,2,0.7)' }}>
+                  {todayRoutineExercises?.length ?? 0} exercises
+                </Text>
+              </View>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: radius.full,
+                  backgroundColor: theme.onAccent,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 20, color: theme.gradientFrom }}>▶</Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => router.push('/(tabs)/add-workout')}
+            style={{ backgroundColor: theme.surface, borderRadius: radius.xl, padding: spacing.lg, gap: spacing.xs }}
+          >
+            <Text font="body" weight="600" size={15}>
+              Nothing scheduled today
+            </Text>
+            <Text font="body" size={13} color="secondary">
+              Tap to pick a routine or quick-start a workout
+            </Text>
+          </Pressable>
+        )}
       </View>
     </Screen>
   );
 }
 
-function StatTile({
-  icon,
-  label,
-  value,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-  onPress: () => void;
-}) {
+function StatTile({ emoji, label, value, onPress }: { emoji: string; label: string; value: string; onPress: () => void }) {
   const theme = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        flex: 1,
-        backgroundColor: theme.surface,
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: theme.border,
-        padding: spacing.md,
-        alignItems: 'center',
-        gap: 4,
-      }}
+      style={{ flex: 1, backgroundColor: theme.surface, borderRadius: radius.lg, padding: spacing.md, gap: 6 }}
     >
-      <Ionicons name={icon} size={20} color={theme.primary} />
-      <Text weight="700">{value}</Text>
-      <Text variant="label" color="muted">
+      <Text style={{ fontSize: 16 }}>{emoji}</Text>
+      <Text font="display" size={22}>
+        {value}
+      </Text>
+      <Text font="body" weight="500" size={11} color="muted">
         {label}
       </Text>
     </Pressable>

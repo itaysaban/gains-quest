@@ -1,12 +1,12 @@
 import { View, FlatList, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { useTodayPlan } from '@/hooks/useTodayPlan';
-import { useRoutines } from '@/hooks/useRoutines';
+import { useRoutines, useRoutineExercises } from '@/hooks/useRoutines';
+import { useProfile } from '@/hooks/useProfile';
 import { useStartSession } from '@/hooks/useWorkoutSession';
 import { supabase } from '@/lib/supabase';
 import { useTheme, spacing, radius } from '@/lib/theme';
@@ -16,12 +16,21 @@ const QUICK_START_TYPES = [
   'Running', 'Yoga', 'Swimming', 'Boxing', 'Tennis', 'Weightlifting', 'Cycling', 'Soccer', 'Basketball', 'Hockey',
 ];
 
+/** Add Workout — design handoff §2 / PRD §7.3, restructured per the PRD's own verdict ("needs
+ * restructuring — no route from here to building a routine"): Today's routine → My routines → Quick
+ * start. Challenges (F6) is dropped entirely, not just hidden — it's P2 in the PRD's own feature
+ * table and there's no challenges table/backend anywhere in the app; a hardcoded progress bar would
+ * fabricate data, same reasoning as Home's dropped Social Feed. */
 export default function AddWorkout() {
   const router = useRouter();
   const theme = useTheme();
-  const { data: todayRoutines } = useTodayPlan();
+  const { data: profile } = useProfile();
+  const { data: todayRoutines, isLoading: loadingPlan } = useTodayPlan();
   const { data: routines } = useRoutines();
   const startSession = useStartSession();
+
+  const todayRoutine = todayRoutines?.[0];
+  const { data: todayRoutineExercises } = useRoutineExercises(todayRoutine?.id);
 
   async function handleStartRoutine(routineId: string) {
     const { data, error } = await supabase
@@ -39,32 +48,82 @@ export default function AddWorkout() {
     router.push('/session/active');
   }
 
+  if (!profile) return <LoadingState />;
+
   return (
     <Screen scroll>
-      <View style={{ gap: spacing.xl }}>
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="subtitle">Today's Routine</Text>
-          {todayRoutines && todayRoutines.length > 0 ? (
-            todayRoutines.map((routine) => (
-              <Card key={routine.id} onPress={() => handleStartRoutine(routine.id)}>
-                <Text weight="600">{routine.name}</Text>
-                <Text variant="caption" color="muted">
-                  Tap to start
-                </Text>
-              </Card>
-            ))
-          ) : (
-            <Card>
-              <Text color="muted">Nothing scheduled today — pick a routine below or quick-start.</Text>
-            </Card>
-          )}
+      <View style={{ gap: spacing.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.xs }}>
+          <LinearGradient
+            colors={[theme.gradientFrom, theme.gradientTo]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ width: 42, height: 42, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text font="body" weight="700" size={17}>
+              {(profile.display_name ?? 'A').charAt(0).toUpperCase()}
+            </Text>
+          </LinearGradient>
+          <View>
+            <Text font="body" weight="700" size={17}>
+              Hello, {profile.display_name ?? 'Athlete'}!
+            </Text>
+            <Text font="body" size={13} color="secondary">
+              Let&apos;s crush it
+            </Text>
+          </View>
         </View>
+
+        {loadingPlan ? null : todayRoutine ? (
+          <View style={{ gap: spacing.sm }}>
+            <Text font="mono" size={13} color="muted" style={{ letterSpacing: 1.5 }}>
+              TODAY&apos;S ROUTINE
+            </Text>
+            <Pressable onPress={() => handleStartRoutine(todayRoutine.id)} disabled={startSession.isPending}>
+              <LinearGradient
+                colors={[theme.gradientFrom, theme.gradientTo]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ borderRadius: radius.xl, padding: spacing.lg, gap: spacing.md }}
+              >
+                <View style={{ gap: 5 }}>
+                  <Text font="display" size={30} style={{ color: theme.onAccent }}>
+                    {todayRoutine.name}
+                  </Text>
+                  {todayRoutineExercises && todayRoutineExercises.length > 0 ? (
+                    <Text font="body" weight="500" size={13} style={{ color: 'rgba(24,13,2,0.72)' }}>
+                      {todayRoutineExercises.map((re) => re.exercise.name).join(' · ')}
+                    </Text>
+                  ) : null}
+                </View>
+                <View
+                  style={{
+                    backgroundColor: theme.onAccent,
+                    borderRadius: radius.md,
+                    padding: spacing.md,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.xs,
+                  }}
+                >
+                  <Text style={{ color: theme.gradientFrom, fontSize: 15 }}>▶</Text>
+                  <Text font="body" weight="700" size={16} style={{ color: '#FFFFFF' }}>
+                    Start session
+                  </Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="subtitle">My Routines</Text>
+            <Text font="mono" size={13} color="muted" style={{ letterSpacing: 1.5 }}>
+              MY ROUTINES
+            </Text>
             <Pressable onPress={() => router.push('/(tabs)/add-workout/routines')}>
-              <Text color="primary" weight="600" variant="caption">
+              <Text font="body" weight="600" size={12} color="primary">
                 See all
               </Text>
             </Pressable>
@@ -76,37 +135,75 @@ export default function AddWorkout() {
               keyExtractor={(item) => item.id}
               showsHorizontalScrollIndicator={false}
               ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
+              ListFooterComponent={
+                <Pressable
+                  onPress={() => router.push('/(tabs)/add-workout/routines/new')}
+                  style={{
+                    minWidth: 110,
+                    backgroundColor: theme.surface,
+                    borderWidth: 1,
+                    borderStyle: 'dashed',
+                    borderColor: theme.borderSubtle,
+                    borderRadius: radius.lg,
+                    padding: spacing.md,
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Text style={{ fontSize: 18, color: theme.primary }}>＋</Text>
+                  <Text font="body" weight="600" size={13} color="secondary">
+                    New routine
+                  </Text>
+                </Pressable>
+              }
               renderItem={({ item }) => (
-                <Card onPress={() => router.push(`/(tabs)/add-workout/routines/${item.id}`)} style={{ minWidth: 160 }}>
-                  <Text weight="600">{item.name}</Text>
+                <Pressable
+                  onPress={() => router.push(`/(tabs)/add-workout/routines/${item.id}`)}
+                  style={{ minWidth: 150, backgroundColor: theme.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs }}
+                >
+                  <Text font="display" size={17} style={{ lineHeight: 18 }}>
+                    {item.name}
+                  </Text>
                   {item.folder ? (
-                    <Text variant="caption" color="muted">
+                    <Text font="body" size={12} color="muted">
                       {item.folder}
                     </Text>
                   ) : null}
-                </Card>
+                </Pressable>
               )}
             />
           ) : (
-            <Button label="Build Your First Routine" variant="secondary" onPress={() => router.push('/(tabs)/add-workout/routines/new')} fullWidth />
+            <Pressable
+              onPress={() => router.push('/(tabs)/add-workout/routines/new')}
+              style={{
+                backgroundColor: theme.surface,
+                borderWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: theme.borderSubtle,
+                borderRadius: radius.lg,
+                padding: spacing.lg,
+                alignItems: 'center',
+              }}
+            >
+              <Text font="body" weight="600" size={14} color="primary">
+                ＋ Build Your First Routine
+              </Text>
+            </Pressable>
           )}
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="subtitle">Quick Start</Text>
+          <Text font="mono" size={13} color="muted" style={{ letterSpacing: 1.5 }}>
+            QUICK START
+          </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
             {QUICK_START_TYPES.map((type) => (
               <Pressable
                 key={type}
                 onPress={() => handleQuickStart(type)}
-                style={{
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm,
-                  borderRadius: radius.full,
-                  backgroundColor: theme.surfaceAlt,
-                }}
+                style={{ paddingHorizontal: spacing.md, paddingVertical: 9, borderRadius: radius.md, backgroundColor: theme.surface }}
               >
-                <Text weight="600" variant="caption">
+                <Text font="body" weight="600" size={13}>
                   {type}
                 </Text>
               </Pressable>
@@ -118,8 +215,7 @@ export default function AddWorkout() {
           onPress={() => router.push('/(tabs)/library')}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm }}
         >
-          <Ionicons name="barbell-outline" size={18} color={theme.textMuted} />
-          <Text color="muted" weight="600">
+          <Text font="body" color="muted" weight="600">
             Manage Exercises
           </Text>
         </Pressable>
