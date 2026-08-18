@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { Modal, View, FlatList, Pressable, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme, spacing } from '@/lib/theme';
+import { Modal, View, TextInput, FlatList, Pressable, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme, spacing, radius } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
-import { TextField } from '@/components/ui/TextField';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ExerciseForm } from '@/components/exercise/ExerciseForm';
 import { useExercises, useCreateExercise, useCheckDuplicateExerciseName, useRecentlyUsedExercises } from '@/hooks/useExercises';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { splitMuscleGroups, TRACKING_TYPE_LABELS } from '@/lib/utils/exercise';
 import type { Exercise } from '@/types/domain';
+import type { ExerciseCategory } from '@/types/database.types';
 import type { ExerciseFormValues } from '@/lib/utils/validation/exercise';
 
 interface Props {
@@ -19,13 +19,29 @@ interface Props {
   title?: string;
 }
 
+const CATEGORY_LABEL: Record<ExerciseCategory, string> = {
+  push: 'Push',
+  pull: 'Pull',
+  legs: 'Legs',
+  core: 'Core',
+  cardio: 'Cardio',
+};
+const CATEGORIES = Object.keys(CATEGORY_LABEL) as ExerciseCategory[];
+
+/** Exercise Picker — design handoff §6 / PRD §6.1.1. Filter chips use the app's real `category`
+ * taxonomy (push/pull/legs/core/cardio, already a queryable useExercises filter) rather than the
+ * mockup's muscle-group labels (Chest/Back/...) — those aren't a real filterable column here.
+ * Single-select preserved (tap a row, it's added and the sheet closes) rather than the mockup's
+ * multi-select "Add N exercises" footer — that's a real interaction-model change across the 3
+ * screens this component is embedded in, not a visual-only one; not taken on unsupervised. */
 export function ExercisePicker({ visible, onClose, onSelect, title = 'Add Exercise' }: Props) {
   const theme = useTheme();
   const { session } = useAuth();
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<ExerciseCategory | null>(null);
   const [creating, setCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { data: exercises, isLoading } = useExercises({ search: search || undefined });
+  const { data: exercises, isLoading } = useExercises({ search: search || undefined, category: category ?? undefined });
   const { data: recentlyUsed } = useRecentlyUsedExercises();
   const createExercise = useCreateExercise();
   const checkDuplicate = useCheckDuplicateExerciseName();
@@ -33,6 +49,7 @@ export function ExercisePicker({ visible, onClose, onSelect, title = 'Add Exerci
   function reset() {
     setCreating(false);
     setSearch('');
+    setCategory(null);
   }
 
   function handleClose() {
@@ -76,51 +93,84 @@ export function ExercisePicker({ visible, onClose, onSelect, title = 'Add Exerci
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
-      <View style={{ flex: 1, backgroundColor: theme.background, paddingTop: spacing.xl }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingHorizontal: spacing.lg,
-            marginBottom: spacing.md,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <View style={{ backgroundColor: theme.chrome, paddingTop: spacing.xl, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             {creating ? (
               <Pressable onPress={() => setCreating(false)} hitSlop={8}>
-                <Ionicons name="chevron-back" size={24} color={theme.text} />
+                <Text font="body" weight="700" size={20} color="secondary">
+                  ‹
+                </Text>
               </Pressable>
             ) : null}
-            <Text variant="subtitle">{creating ? 'New Exercise' : title}</Text>
+            <Text font="body" weight="700" size={17} style={{ flex: 1 }}>
+              {creating ? 'New Exercise' : title}
+            </Text>
+            {!creating ? (
+              <Pressable onPress={() => setCreating(true)}>
+                <Text font="body" weight="600" size={13} color="primary">
+                  Custom
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={handleClose} hitSlop={8}>
+              <Text font="body" weight="700" size={20} color="secondary">
+                ✕
+              </Text>
+            </Pressable>
           </View>
-          <Pressable onPress={handleClose} hitSlop={8}>
-            <Ionicons name="close" size={26} color={theme.text} />
-          </Pressable>
+
+          {!creating ? (
+            <View
+              style={{
+                backgroundColor: theme.background,
+                borderRadius: radius.md,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+              }}
+            >
+              <Text style={{ fontSize: 14, color: theme.textMuted }}>⌕</Text>
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                placeholder="Search exercises…"
+                placeholderTextColor={theme.textMuted}
+                style={{ flex: 1, fontSize: 14, color: theme.text }}
+              />
+            </View>
+          ) : null}
         </View>
 
         {creating ? (
-          <View style={{ flex: 1, paddingHorizontal: spacing.lg }}>
-            <ExerciseForm
-              defaultValues={{ name: search }}
-              onSubmit={handleCreate}
-              submitting={submitting}
-              submitLabel="Create & Add"
-            />
+          <View style={{ flex: 1, padding: spacing.lg }}>
+            <ExerciseForm defaultValues={{ name: search }} onSubmit={handleCreate} submitting={submitting} submitLabel="Create & Add" />
           </View>
         ) : (
           <>
-            <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md, gap: spacing.sm }}>
-              <TextField placeholder="Search exercises…" value={search} onChangeText={setSearch} autoCapitalize="none" />
-              <Pressable
-                onPress={() => setCreating(true)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs }}
-              >
-                <Ionicons name="add-circle" size={20} color={theme.primary} />
-                <Text color="primary" weight="600">
-                  {search ? `Create "${search}" as a new exercise` : 'Create a new exercise'}
-                </Text>
-              </Pressable>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, padding: spacing.lg, paddingBottom: spacing.md }}>
+              {CATEGORIES.map((c) => {
+                const active = category === c;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => setCategory(active ? null : c)}
+                    style={{
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.sm,
+                      borderRadius: radius.full,
+                      backgroundColor: active ? theme.primary : theme.surface,
+                    }}
+                  >
+                    <Text font="body" weight="600" size={12} style={{ color: active ? theme.onAccent : theme.textSecondary }}>
+                      {CATEGORY_LABEL[c]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
             {!isLoading && exercises?.length === 0 ? (
@@ -135,73 +185,79 @@ export function ExercisePicker({ visible, onClose, onSelect, title = 'Add Exerci
               <FlatList
                 data={exercises}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}
+                contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.xs }}
                 ListHeaderComponent={
-                  !search && recentlyUsed && recentlyUsed.length > 0 ? (
-                    <View style={{ marginBottom: spacing.md }}>
-                      <Text variant="label" color="muted" weight="700" style={{ marginBottom: spacing.xs }}>
-                        RECENTLY USED
+                  !search && !category && recentlyUsed && recentlyUsed.length > 0 ? (
+                    <View style={{ marginBottom: spacing.md, gap: spacing.sm }}>
+                      <Text font="mono" size={12} color="muted" style={{ letterSpacing: 1.5 }}>
+                        RECENT
                       </Text>
-                      <FlatList
-                        horizontal
-                        data={recentlyUsed}
-                        keyExtractor={(item) => `recent-${item.id}`}
-                        showsHorizontalScrollIndicator={false}
-                        ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
-                        renderItem={({ item }) => (
-                          <Pressable
-                            onPress={() => {
-                              onSelect(item);
-                              handleClose();
-                            }}
-                            style={{
-                              backgroundColor: theme.surfaceAlt,
-                              borderRadius: 12,
-                              paddingHorizontal: spacing.md,
-                              paddingVertical: spacing.sm,
-                            }}
-                          >
-                            <Text weight="600">{item.name}</Text>
-                          </Pressable>
-                        )}
-                      />
+                      {recentlyUsed.map((item) => (
+                        <ExerciseRow key={`recent-${item.id}`} exercise={item} onPress={() => { onSelect(item); handleClose(); }} />
+                      ))}
+                      <Text font="mono" size={12} color="muted" style={{ letterSpacing: 1.5, marginTop: spacing.xs }}>
+                        ALL
+                      </Text>
                     </View>
                   ) : null
                 }
-                renderItem={({ item }) => {
-                  const { primary, secondary } = splitMuscleGroups(item.muscle_groups);
-                  return (
-                    <Pressable
-                      onPress={() => {
-                        onSelect(item);
-                        handleClose();
-                      }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingVertical: spacing.md,
-                        borderBottomWidth: 1,
-                        borderBottomColor: theme.border,
-                      }}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text weight="600">{item.name}</Text>
-                        <Text variant="caption" color="muted">
-                          {primary ?? item.category}
-                          {secondary.length > 0 ? ` (+ ${secondary.join(', ')})` : ''} · {item.equipment} ·{' '}
-                          {TRACKING_TYPE_LABELS[item.tracking_type]}
-                        </Text>
-                      </View>
-                      {item.is_favorite ? <Ionicons name="star" size={18} color={theme.warning} /> : null}
-                    </Pressable>
-                  );
-                }}
+                renderItem={({ item }) => <ExerciseRow exercise={item} onPress={() => { onSelect(item); handleClose(); }} />}
+                ItemSeparatorComponent={() => <View style={{ height: spacing.xs }} />}
+                ListFooterComponent={
+                  <Pressable
+                    onPress={() => setCreating(true)}
+                    style={{
+                      marginTop: spacing.sm,
+                      borderWidth: 1,
+                      borderStyle: 'dashed',
+                      borderColor: theme.borderSubtle,
+                      borderRadius: radius.md,
+                      padding: spacing.md,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text font="body" weight="600" size={13} color="secondary">
+                      Can&apos;t find it? Create a custom exercise
+                    </Text>
+                  </Pressable>
+                }
               />
             )}
           </>
         )}
       </View>
     </Modal>
+  );
+}
+
+function ExerciseRow({ exercise, onPress }: { exercise: Exercise; onPress: () => void }) {
+  const theme = useTheme();
+  const { primary, secondary } = splitMuscleGroups(exercise.muscle_groups);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: theme.surface, borderRadius: radius.md, padding: spacing.md }}
+    >
+      <View style={{ width: 34, height: 34, borderRadius: radius.sm, backgroundColor: theme.cardInset }} />
+      <View style={{ flex: 1 }}>
+        <Text font="body" weight="700" size={15} style={{ lineHeight: 16 }}>
+          {exercise.name}
+        </Text>
+        <Text font="body" size={11} color="muted" style={{ lineHeight: 14, marginTop: 1 }}>
+          {primary ?? exercise.category}
+          {secondary.length > 0 ? ` (+ ${secondary.join(', ')})` : ''} · {exercise.equipment} · {TRACKING_TYPE_LABELS[exercise.tracking_type]}
+        </Text>
+      </View>
+      {exercise.is_favorite ? <Text style={{ fontSize: 16, color: theme.warning }}>★</Text> : null}
+      <LinearGradient
+        colors={[theme.gradientFrom, theme.gradientTo]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Text style={{ color: theme.onAccent, fontSize: 15, fontWeight: '700', lineHeight: 16 }}>＋</Text>
+      </LinearGradient>
+    </Pressable>
   );
 }
