@@ -22,10 +22,9 @@ import {
 } from '@/hooks/useRoutines';
 import { useStartSession } from '@/hooks/useWorkoutSession';
 import { generateUuid } from '@/lib/utils/uuid';
+import { isSupersetLinkedToPrevious, supersetLabel } from '@/lib/utils/routine';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { RoutineExerciseWithDetails } from '@/types/domain';
-
-const SUPERSET_LETTERS = 'ABCDEFGHIJ';
 
 export default function RoutineDetail() {
   const { routineId } = useLocalSearchParams<{ routineId: string }>();
@@ -48,22 +47,7 @@ export default function RoutineDetail() {
   if (loadingRoutine || loadingExercises || !routine) return <LoadingState />;
 
   function isLinkedToPrevious(idx: number) {
-    if (idx === 0) return false;
-    const prev = items[idx - 1];
-    const cur = items[idx];
-    return !!cur.superset_group_id && cur.superset_group_id === prev.superset_group_id;
-  }
-
-  // "SUPERSET A/B/…" label shown only on the first item of each group — one letter per distinct
-  // superset_group_id encountered, in list order.
-  function supersetLabel(idx: number): string | undefined {
-    const cur = items[idx];
-    if (!cur.superset_group_id || isLinkedToPrevious(idx)) return undefined;
-    const seenGroupIds = new Set<string>();
-    for (let i = 0; i < idx; i++) {
-      if (items[i].superset_group_id) seenGroupIds.add(items[i].superset_group_id!);
-    }
-    return `SUPERSET ${SUPERSET_LETTERS[seenGroupIds.size] ?? seenGroupIds.size + 1}`;
+    return isSupersetLinkedToPrevious(items, idx);
   }
 
   async function handleToggleSuperset(idx: number) {
@@ -133,7 +117,7 @@ export default function RoutineDetail() {
                   <RoutineExerciseRow
                     item={item}
                     isSupersetLinked={isLinkedToPrevious(idx)}
-                    supersetLabel={supersetLabel(idx)}
+                    supersetLabel={supersetLabel(items, idx)}
                     onDrag={drag}
                     onRemove={() => removeExercise.mutate({ id: item.id, routineId: routineId! })}
                     onToggleSuperset={() => handleToggleSuperset(idx)}

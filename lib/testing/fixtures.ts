@@ -1,4 +1,4 @@
-import type { Exercise, ExerciseCurrentBest, LoggedSet, Profile, SessionExerciseWithSets } from '@/types/domain';
+import type { Exercise, ExerciseCurrentBest, LoggedSet, Profile, RoutineExerciseWithDetails, SessionExerciseWithSets } from '@/types/domain';
 
 let counter = 0;
 function id(prefix: string) {
@@ -64,6 +64,27 @@ export function makeSessionExercise(overrides: Partial<SessionExerciseWithSets> 
     target_reps_max: null,
     created_at: new Date().toISOString(),
     sets: [],
+    ...overrides,
+    exercise,
+  };
+}
+
+export function makeRoutineExercise(overrides: Partial<RoutineExerciseWithDetails> = {}): RoutineExerciseWithDetails {
+  const exercise = overrides.exercise ?? makeExercise();
+  return {
+    id: id('routine-exercise'),
+    routine_id: 'routine-1',
+    user_id: 'test-user-id',
+    exercise_id: exercise.id,
+    order_index: 0,
+    superset_group_id: null,
+    target_sets: 3,
+    target_reps_min: 8,
+    target_reps_max: 12,
+    target_weight: null,
+    rest_seconds: 90,
+    note: null,
+    created_at: new Date().toISOString(),
     ...overrides,
     exercise,
   };

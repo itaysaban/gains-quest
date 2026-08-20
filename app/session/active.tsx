@@ -24,6 +24,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { groupBySuperset } from '@/types/domain';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import { formatDuration } from '@/lib/utils/date';
+import { computeLiveVolume } from '@/lib/utils/session';
 import { supabase } from '@/lib/supabase';
 
 export default function ActiveSession() {
@@ -137,10 +138,7 @@ export default function ActiveSession() {
   }
 
   const groups = sessionExercises ? groupBySuperset(sessionExercises) : [];
-  const liveVolume = (sessionExercises ?? [])
-    .flatMap((se) => se.sets)
-    .filter((s) => s.set_type !== 'warmup')
-    .reduce((sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 1), 0);
+  const liveVolume = computeLiveVolume(sessionExercises ?? []);
 
   return (
     // See the SafeAreaProvider note on the "no active workout" return above — same reasoning.

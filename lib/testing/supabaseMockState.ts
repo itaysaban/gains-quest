@@ -48,7 +48,7 @@ function nextResponse(table: string): MockResolution {
 }
 
 function makeChain(table: string): PromiseLike<MockResolution> {
-  const chainMethods = ['select', 'eq', 'neq', 'order', 'limit', 'in', 'upsert', 'insert', 'update', 'delete', 'single', 'maybeSingle'];
+  const chainMethods = ['select', 'eq', 'neq', 'gte', 'order', 'limit', 'in', 'upsert', 'insert', 'update', 'delete', 'single', 'maybeSingle'];
   const chain: Record<string, unknown> = {};
   for (const method of chainMethods) {
     chain[method] = (...args: unknown[]) => {
