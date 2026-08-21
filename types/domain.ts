@@ -16,8 +16,12 @@ export type Streak = Database['public']['Tables']['streaks']['Row'];
 export type Badge = Database['public']['Tables']['badges']['Row'];
 export type UserBadge = Database['public']['Tables']['user_badges']['Row'];
 export type NotificationPreferences = Database['public']['Tables']['notification_preferences']['Row'];
+export type FriendRequest = Database['public']['Tables']['friend_requests']['Row'];
 
 export type CompleteSessionResult = Database['public']['Functions']['fn_complete_session']['Returns'];
+export type UserSearchResult = Database['public']['Functions']['fn_search_users']['Returns'][number];
+export type Friend = Database['public']['Functions']['fn_list_friends']['Returns'][number];
+export type PendingFriendRequest = Database['public']['Functions']['fn_pending_friend_requests']['Returns'][number];
 
 /** Routine exercise joined with its exercise details, as the routine builder/session screens consume it. */
 export interface RoutineExerciseWithDetails extends RoutineExercise {

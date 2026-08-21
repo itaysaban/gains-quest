@@ -11,6 +11,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="weekly-goal" options={{ title: 'Weekly Goal' }} />
       <Stack.Screen name="pause-mode" options={{ title: 'Pause Mode' }} />
+      <Stack.Screen name="friends" options={{ title: 'Friends' }} />
     </Stack>
   );
 }

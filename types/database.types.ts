@@ -15,6 +15,7 @@ export type MeasurementType = 'bodyweight' | 'body_fat_pct' | 'circumference';
 export type PointSource = 'base' | 'volume' | 'cardio' | 'pr' | 'routine' | 'achievement';
 // M3 Epic 3 Story 3.1: replaced the old 4-category set with the PRD's v1.0 categories.
 export type BadgeCategory = 'onboarding' | 'cardio' | 'consistency' | 'volume' | 'social' | 'progression' | 'variety';
+export type FriendRequestStatus = 'pending' | 'accepted' | 'declined';
 
 export interface CustomFieldDef {
   key: string;
@@ -330,6 +331,18 @@ export interface Database {
         ended_at: string;
         created_at: string;
       }>;
+      // M4 Story 1: a friendship is one row, 'accepted' — no separate mutable "friends" table.
+      // Written only by the fn_send_friend_request/fn_respond_friend_request/fn_remove_friend
+      // functions below; the client reads it (own rows only) mostly through fn_list_friends/
+      // fn_pending_friend_requests rather than querying this table directly.
+      friend_requests: ReadOnlyTable<{
+        id: string;
+        requester_id: string;
+        addressee_id: string;
+        status: FriendRequestStatus;
+        created_at: string;
+        responded_at: string | null;
+      }>;
       streaks: ReadOnlyTable<{
         user_id: string;
         current_streak_days: number;
@@ -455,6 +468,44 @@ export interface Database {
           badges_unlocked: number;
           badges_total: number;
         };
+      };
+      fn_search_users: {
+        Args: { p_query: string };
+        Returns: { id: string; display_name: string | null; avatar_url: string | null; relationship: FriendRequestStatus | 'none' }[];
+      };
+      fn_send_friend_request: {
+        Args: { p_addressee_id: string };
+        Returns: {
+          id: string;
+          requester_id: string;
+          addressee_id: string;
+          status: FriendRequestStatus;
+          created_at: string;
+          responded_at: string | null;
+        };
+      };
+      fn_respond_friend_request: {
+        Args: { p_request_id: string; p_accept: boolean };
+        Returns: {
+          id: string;
+          requester_id: string;
+          addressee_id: string;
+          status: FriendRequestStatus;
+          created_at: string;
+          responded_at: string | null;
+        };
+      };
+      fn_remove_friend: {
+        Args: { p_friend_id: string };
+        Returns: undefined;
+      };
+      fn_list_friends: {
+        Args: { p_user_id: string };
+        Returns: { id: string; display_name: string | null; avatar_url: string | null; friends_since: string | null }[];
+      };
+      fn_pending_friend_requests: {
+        Args: { p_user_id: string };
+        Returns: { id: string; from_user_id: string; display_name: string | null; avatar_url: string | null; created_at: string }[];
       };
     };
     Enums: Record<string, never>;
