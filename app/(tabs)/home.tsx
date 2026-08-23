@@ -69,12 +69,20 @@ export default function Home() {
             </View>
           </Pressable>
 
-          <Pressable
-            onPress={() => router.push('/(tabs)/settings/notifications')}
-            style={{ width: 38, height: 38, borderRadius: radius.md, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 17 }}>🔔</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <Pressable
+              onPress={() => router.push('/(tabs)/settings/friends')}
+              style={{ width: 38, height: 38, borderRadius: radius.md, backgroundColor: theme.cardInset, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 17 }}>👥</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(tabs)/settings/notifications')}
+              style={{ width: 38, height: 38, borderRadius: radius.md, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 17 }}>🔔</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
