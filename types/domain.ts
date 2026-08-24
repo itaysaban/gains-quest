@@ -22,6 +22,7 @@ export type CompleteSessionResult = Database['public']['Functions']['fn_complete
 export type UserSearchResult = Database['public']['Functions']['fn_search_users']['Returns'][number];
 export type Friend = Database['public']['Functions']['fn_list_friends']['Returns'][number];
 export type PendingFriendRequest = Database['public']['Functions']['fn_pending_friend_requests']['Returns'][number];
+export type LeaderboardRow = Database['public']['Functions']['fn_leaderboard']['Returns'][number];
 
 /** Routine exercise joined with its exercise details, as the routine builder/session screens consume it. */
 export interface RoutineExerciseWithDetails extends RoutineExercise {

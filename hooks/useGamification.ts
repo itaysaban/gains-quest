@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth/AuthProvider';
-import type { Badge, PersonalRecord, Streak, UserBadge } from '@/types/domain';
+import type { Badge, LeaderboardRow, PersonalRecord, Streak, UserBadge } from '@/types/domain';
 import type { PointSource } from '@/types/database.types';
 
 export function useStreak() {
@@ -112,11 +112,12 @@ export interface LifetimeStats {
   prs: number;
   badges_unlocked: number;
   badges_total: number;
+  /** M4 Story 2: the caller's current-season global rank, or null with no season activity yet —
+   * still never a fabricated number when there's genuinely nothing to rank. */
+  season_rank: number | null;
 }
 
-/** M3 Epic 3 Story 3.3 (design handoff): the Achievement Hall's LIFETIME card. Season rank isn't
- * included — that's an M4 dependency (seasonal leaderboards don't exist yet); render a static
- * placeholder for it client-side. */
+/** M3 Epic 3 Story 3.3 (design handoff): the Achievement Hall's LIFETIME card. */
 export function useLifetimeStats() {
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -206,6 +207,25 @@ export function useTodayPointsEarned() {
         .gte('created_at', todayStart.toISOString());
       if (error) throw error;
       return data.reduce((sum, row) => sum + row.points, 0);
+    },
+  });
+}
+
+/** M4 Story 2: current-season leaderboard (PRD §6.2). 'global' returns only the caller's own ~100-
+ * person tier ("ranking against everyone is meaningless at scale"); 'friends' is unbounded and
+ * always includes the caller, even with zero friends or zero season GP — the "no friends yet" empty
+ * state is the screen's call on the friends list being just the caller alone, not this hook's. */
+export function useLeaderboard(scope: 'global' | 'friends') {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['leaderboard', scope, userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<LeaderboardRow[]> => {
+      const { data, error } = await supabase.rpc('fn_leaderboard', { p_scope: scope });
+      if (error) throw error;
+      return data;
     },
   });
 }

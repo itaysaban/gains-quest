@@ -87,7 +87,12 @@ export default function Home() {
 
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           <StatTile emoji="⚡" label="Points" value={lifetimeStats.total_gp.toLocaleString()} onPress={() => router.push('/(tabs)/leaderboard')} />
-          <StatTile emoji="🏆" label="Tier rank" value="—" onPress={() => router.push('/(tabs)/leaderboard')} />
+          <StatTile
+            emoji="🏆"
+            label="Tier rank"
+            value={lifetimeStats.season_rank != null ? `#${lifetimeStats.season_rank}` : '—'}
+            onPress={() => router.push('/(tabs)/leaderboard')}
+          />
           <StatTile emoji="🔥" label="Day streak" value={String(streak.current_streak_days)} onPress={() => router.push('/(tabs)/achievements')} />
         </View>
 

@@ -3,8 +3,8 @@ import { useTheme, spacing, radius } from '@/lib/theme';
 import { Text } from '@/components/ui/Text';
 import type { LifetimeStats } from '@/hooks/useGamification';
 
-/** Achievement Hall LIFETIME card — design handoff §7. Season rank is an M4 dependency (seasonal
- * leaderboards don't exist yet) and always renders as a placeholder, never a fake number. */
+/** Achievement Hall LIFETIME card — design handoff §7. Season rank (M4 Story 2) shows "—" only when
+ * the user genuinely has no season activity yet — never a fabricated number. */
 export function LifetimeCard({ stats }: { stats: LifetimeStats }) {
   const theme = useTheme();
 
@@ -13,7 +13,7 @@ export function LifetimeCard({ stats }: { stats: LifetimeStats }) {
     { label: 'Sessions', value: stats.sessions.toLocaleString() },
     { label: 'Volume', value: formatVolume(stats.volume_kg) },
     { label: 'PRs set', value: stats.prs.toLocaleString() },
-    { label: 'Season rank', value: '—' },
+    { label: 'Season rank', value: stats.season_rank != null ? `#${stats.season_rank}` : '—' },
     { label: 'Badges', value: `${stats.badges_unlocked} / ${stats.badges_total}` },
   ];
 

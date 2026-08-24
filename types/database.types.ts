@@ -467,6 +467,9 @@ export interface Database {
           prs: number;
           badges_unlocked: number;
           badges_total: number;
+          // M4 Story 2: the caller's current-season global rank, or null with no season_id GP yet
+          // this month — never a fabricated number.
+          season_rank: number | null;
         };
       };
       fn_search_users: {
@@ -506,6 +509,19 @@ export interface Database {
       fn_pending_friend_requests: {
         Args: { p_user_id: string };
         Returns: { id: string; from_user_id: string; display_name: string | null; avatar_url: string | null; created_at: string }[];
+      };
+      fn_leaderboard: {
+        Args: { p_scope: 'global' | 'friends' };
+        Returns: {
+          rank: number;
+          user_id: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          season_gp: number;
+          is_self: boolean;
+          tier_number: number | null;
+          tier_size: number | null;
+        }[];
       };
     };
     Enums: Record<string, never>;
