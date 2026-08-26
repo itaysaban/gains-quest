@@ -523,6 +523,43 @@ export interface Database {
           tier_size: number | null;
         }[];
       };
+      fn_friend_feed: {
+        Args: { p_limit?: number; p_before?: string | null };
+        Returns: {
+          id: string;
+          user_id: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          event_type: 'session_completed' | 'pr_set' | 'badge_unlocked';
+          // Deliberately activity-shape only per PRD §6.5 — never weight/volume numbers.
+          metadata: Record<string, unknown>;
+          badge_code: string | null;
+          badge_name: string | null;
+          badge_icon: string | null;
+          created_at: string;
+          reaction_count: number;
+          reacted_by_me: boolean;
+        }[];
+      };
+      fn_toggle_reaction: {
+        Args: { p_feed_event_id: string };
+        Returns: boolean;
+      };
+      fn_active_challenges: {
+        Args: { p_user_id: string };
+        Returns: {
+          id: string;
+          code: string;
+          name: string;
+          description: string;
+          metric: 'sessions_completed' | 'new_prs' | 'total_sets';
+          target_value: number;
+          progress_value: number;
+          status: 'active' | 'completed';
+          points: number;
+          period_end: string;
+        }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

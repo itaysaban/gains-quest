@@ -10,14 +10,14 @@ import { useRoutineExercises } from '@/hooks/useRoutines';
 import { useProfile } from '@/hooks/useProfile';
 import { useStartSession } from '@/hooks/useWorkoutSession';
 import { useStreakReminder } from '@/hooks/useStreakReminder';
+import { FeedList } from '@/components/social/FeedList';
 import { supabase } from '@/lib/supabase';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { RoutineExerciseWithDetails } from '@/types/domain';
 
-/** Home — design handoff §1 / PRD §6.5. Rank tile is a static "—" placeholder (same pattern as
- * Achievement Hall's LIFETIME card Season rank) — tiers/leaderboards don't exist yet (M4). Social
- * Feed is dropped entirely for the same reason: there's no friends/activity backend to read from,
- * and a hardcoded feed would misrepresent real functionality. */
+/** Home — design handoff §1 / PRD §6.5. Rank tile reads the real season_rank from fn_lifetime_stats
+ * (M4 Story 2). Social Feed (M4 Story 3) is real self + accepted-friends activity from
+ * fn_friend_feed — activity-shape only per PRD §6.5, never weight/volume numbers. */
 export default function Home() {
   const router = useRouter();
   const theme = useTheme();
@@ -142,6 +142,11 @@ export default function Home() {
             </Text>
           </Pressable>
         )}
+
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="subtitle">Social Feed</Text>
+          <FeedList />
+        </View>
       </View>
     </Screen>
   );

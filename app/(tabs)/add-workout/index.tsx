@@ -8,6 +8,7 @@ import { useTodayPlan } from '@/hooks/useTodayPlan';
 import { useRoutines, useRoutineExercises } from '@/hooks/useRoutines';
 import { useProfile } from '@/hooks/useProfile';
 import { useStartSession } from '@/hooks/useWorkoutSession';
+import { ChallengesSection } from '@/components/social/ChallengesSection';
 import { supabase } from '@/lib/supabase';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { RoutineExerciseWithDetails } from '@/types/domain';
@@ -18,9 +19,9 @@ const QUICK_START_TYPES = [
 
 /** Add Workout — design handoff §2 / PRD §7.3, restructured per the PRD's own verdict ("needs
  * restructuring — no route from here to building a routine"): Today's routine → My routines → Quick
- * start. Challenges (F6) is dropped entirely, not just hidden — it's P2 in the PRD's own feature
- * table and there's no challenges table/backend anywhere in the app; a hardcoded progress bar would
- * fabricate data, same reasoning as Home's dropped Social Feed. */
+ * start → Challenges. Challenges (F6, M4 Story 4) lives here as a section rather than a 5th bottom
+ * tab, per the user's own navigation call — a fixed weekly pool from fn_active_challenges, not
+ * personalized/inferred. */
 export default function AddWorkout() {
   const router = useRouter();
   const theme = useTheme();
@@ -209,6 +210,13 @@ export default function AddWorkout() {
               </Pressable>
             ))}
           </View>
+        </View>
+
+        <View style={{ gap: spacing.sm }}>
+          <Text font="mono" size={13} color="muted" style={{ letterSpacing: 1.5 }}>
+            CHALLENGES
+          </Text>
+          <ChallengesSection />
         </View>
 
         <Pressable
