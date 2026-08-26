@@ -26,9 +26,9 @@ import type { Friend, PendingFriendRequest, UserSearchResult } from '@/types/dom
 export default function Friends() {
   const theme = useTheme();
   const [query, setQuery] = useState('');
-  const { data: searchResults, isLoading: searching } = useSearchUsers(query);
-  const { data: friends, isLoading: loadingFriends } = useFriends();
-  const { data: pending, isLoading: loadingPending } = usePendingFriendRequests();
+  const { data: searchResults, isLoading: searching, error: searchError } = useSearchUsers(query);
+  const { data: friends, isLoading: loadingFriends, error: friendsError, refetch: refetchFriends } = useFriends();
+  const { data: pending, isLoading: loadingPending, error: pendingError, refetch: refetchPending } = usePendingFriendRequests();
   const sendRequest = useSendFriendRequest();
   const respondRequest = useRespondFriendRequest();
   const removeFriend = useRemoveFriend();
@@ -42,6 +42,28 @@ export default function Friends() {
 
   if (loadingFriends || loadingPending) return <LoadingState />;
 
+  // Surfaced explicitly rather than silently falling through to "no friends"/"no results" — an RPC
+  // error (e.g. a migration not deployed yet) used to look identical to a genuinely empty list.
+  const loadError = friendsError ?? pendingError;
+  if (loadError) {
+    return (
+      <Screen scroll>
+        <View style={{ gap: spacing.md, alignItems: 'flex-start' }}>
+          <Text weight="700">Couldn&apos;t load Friends</Text>
+          <Text color="muted">{(loadError as any)?.message ?? 'Something went wrong.'}</Text>
+          <Button
+            label="Try again"
+            variant="secondary"
+            onPress={() => {
+              refetchFriends();
+              refetchPending();
+            }}
+          />
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen scroll>
       <View style={{ gap: spacing.lg }}>
@@ -51,6 +73,8 @@ export default function Friends() {
             <View style={{ gap: spacing.xs }}>
               {searching ? (
                 <Text color="muted">Searching…</Text>
+              ) : searchError ? (
+                <Text color="danger">{(searchError as any)?.message ?? "Search didn't work — try again."}</Text>
               ) : searchResults?.length === 0 ? (
                 <Text color="muted">No one found.</Text>
               ) : (
