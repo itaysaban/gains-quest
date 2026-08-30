@@ -56,6 +56,7 @@ export interface Database {
           progression_lower_increment_kg: number;
           progression_deload_pct: number;
           onboarding_completed_at: string | null;
+          leaderboard_opt_out: boolean;
           created_at: string;
           updated_at: string;
         },
@@ -70,6 +71,7 @@ export interface Database {
           progression_lower_increment_kg?: number;
           progression_deload_pct?: number;
           onboarding_completed_at?: string | null;
+          leaderboard_opt_out?: boolean;
         }
       >;
       exercises: WritableTable<

@@ -13,6 +13,7 @@ const ROWS: { label: string; route: string; icon: keyof typeof Ionicons.glyphMap
   { label: 'Pause Mode', route: '/(tabs)/settings/pause-mode', icon: 'pause-circle-outline' },
   { label: 'Notifications', route: '/(tabs)/settings/notifications', icon: 'notifications-outline' },
   { label: 'Friends', route: '/(tabs)/settings/friends', icon: 'people-outline' },
+  { label: 'Privacy', route: '/(tabs)/settings/privacy', icon: 'eye-off-outline' },
 ];
 
 export default function Settings() {
