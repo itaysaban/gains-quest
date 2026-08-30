@@ -101,6 +101,9 @@ export function makeProfile(overrides: Partial<Profile> = {}): Profile {
     progression_upper_increment_kg: 2.5,
     progression_lower_increment_kg: 5,
     progression_deload_pct: 10,
+    // Defaults to already-onboarded — most existing tests render post-onboarding screens and
+    // shouldn't need to know this field exists. Onboarding's own tests override it explicitly.
+    onboarding_completed_at: new Date().toISOString(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...overrides,

@@ -1,0 +1,13 @@
+-- M5 (Polish), Story 1: Onboarding — PRD §10 M5 scope, exit criterion "new-user activation path
+-- completes with no dead ends". Nothing schema-heavy needed: unit_preference and weekly_goal_days
+-- (which already drives rest_allowance, per 20260814000011) already exist with sensible defaults —
+-- onboarding just confirms/adjusts them rather than introducing new settings. The only new piece is
+-- a completion flag so the app knows whether a user has been through the flow.
+--
+-- Nullable, no default: every existing row (including every test account created earlier this
+-- session) is null, so they'll see onboarding on next login too — correct behavior, since nothing
+-- has ever reached production and there's no real user base to grandfather in.
+--
+-- Client-updatable directly via the existing profiles_update_own RLS policy (auth.uid() = id) — no
+-- new SECURITY DEFINER function needed, same as unit_preference/weekly_goal_days already are.
+alter table public.profiles add column onboarding_completed_at timestamptz;

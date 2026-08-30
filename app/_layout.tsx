@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from '@/lib/auth/AuthProvider';
 import { queryClient, persistOptions } from '@/lib/queryClient';
 import { registerMutationDefaults } from '@/lib/registerMutationDefaults';
 import { useStaleSessionPrompt } from '@/hooks/useStaleSessionPrompt';
+import { useProfile } from '@/hooks/useProfile';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useTheme } from '@/lib/theme';
 
@@ -22,6 +23,7 @@ registerMutationDefaults();
 
 function RootNavigation() {
   const { session, isLoading } = useAuth();
+  const { data: profile } = useProfile();
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();
@@ -45,13 +47,26 @@ function RootNavigation() {
     if ((segments as string[]).length === 0) return; // still on the root "/" index route — its own <Redirect> owns this transition
 
     const inAuthGroup = segments[0] === '(auth)';
+    const onOnboarding = segments[0] === 'onboarding';
 
-    if (!session && !inAuthGroup) {
-      router.replace('/(auth)/sign-in');
-    } else if (session && inAuthGroup) {
+    if (!session) {
+      if (!inAuthGroup) router.replace('/(auth)/sign-in');
+      return;
+    }
+
+    // Session exists past this point. Wait for the profile fetch rather than deciding early — the
+    // brand-new-signup default (onboarding_completed_at null) and "not loaded yet" (undefined) must
+    // not be treated the same, or every user would flash into onboarding for a frame on every launch.
+    if (profile === undefined) return;
+
+    const needsOnboarding = !profile.onboarding_completed_at;
+
+    if (needsOnboarding && !onOnboarding) {
+      router.replace('/onboarding');
+    } else if (!needsOnboarding && (inAuthGroup || onOnboarding)) {
       router.replace('/(tabs)/home');
     }
-  }, [session, isLoading, segments, router]);
+  }, [session, isLoading, segments, router, profile]);
 
   if (isLoading || !fontsLoaded) return <LoadingState />;
 
@@ -61,6 +76,7 @@ function RootNavigation() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="session/active" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="session/summary" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
