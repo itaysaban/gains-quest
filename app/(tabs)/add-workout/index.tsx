@@ -20,7 +20,7 @@ const QUICK_START_TYPES = [
 /** Add Workout — design handoff §2 / PRD §7.3, restructured per the PRD's own verdict ("needs
  * restructuring — no route from here to building a routine"): Today's routine → My routines → Quick
  * start → Challenges. Challenges (F6, M4 Story 4) lives here as a section rather than a 5th bottom
- * tab, per the user's own navigation call — a fixed weekly pool from fn_active_challenges, not
+ * tab, per the user's own navigation call — a fixed daily pool from fn_active_challenges, not
  * personalized/inferred. */
 export default function AddWorkout() {
   const router = useRouter();

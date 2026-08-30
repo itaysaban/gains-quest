@@ -170,6 +170,10 @@ export function useCompleteSession() {
       queryClient.invalidateQueries({ queryKey: ['streak'] });
       queryClient.invalidateQueries({ queryKey: ['badges'] });
       queryClient.invalidateQueries({ queryKey: ['personal-records'] });
+      // fn_active_challenges recomputes progress live on every call, but without this the cached
+      // Add Workout / Session Summary reads stayed stale until some other trigger (e.g. an app
+      // reload) happened to refetch them — a session completing is exactly when progress changes.
+      queryClient.invalidateQueries({ queryKey: ['active-challenges'] });
     },
   });
 }

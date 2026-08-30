@@ -14,6 +14,8 @@ import { formatDuration, formatShortDate } from '@/lib/utils/date';
 import { pointSourceLabel, streakMultiplier } from '@/lib/utils/points';
 import { useSessionPointBreakdown, useTodayPointsEarned, useStreak } from '@/hooks/useGamification';
 import { useWorkoutSession, useDeleteCompletedSession } from '@/hooks/useWorkoutSession';
+import { useActiveChallenges } from '@/hooks/useChallenges';
+import { ChallengeCard } from '@/components/social/ChallengesSection';
 
 interface PrResult {
   exercise_id: string;
@@ -56,6 +58,7 @@ export default function SessionSummary() {
   const { data: breakdown } = useSessionPointBreakdown(params.sessionId);
   const { data: todayEarned } = useTodayPointsEarned();
   const { data: streak } = useStreak();
+  const { data: challenges } = useActiveChallenges();
   const deleteSession = useDeleteCompletedSession();
 
   const prs: PrResult[] = params.prs ? JSON.parse(params.prs) : [];
@@ -225,6 +228,17 @@ export default function SessionSummary() {
                   </View>
                 ))}
               </View>
+            </View>
+          ) : null}
+
+          {challenges && challenges.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              <Text font="mono" size={12} color="muted" style={{ letterSpacing: 2, paddingHorizontal: 2 }}>
+                QUEST PROGRESS
+              </Text>
+              {challenges.map((challenge) => (
+                <ChallengeCard key={challenge.id} challenge={challenge} />
+              ))}
             </View>
           ) : null}
 

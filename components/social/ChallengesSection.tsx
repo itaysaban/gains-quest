@@ -5,7 +5,7 @@ import { useActiveChallenges } from '@/hooks/useChallenges';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { Challenge } from '@/types/domain';
 
-/** M4 Story 4 — a fixed weekly pool (PRD F6, P2), not personalized. Lives inside Add Workout per
+/** M4 Story 4 — a fixed daily pool (PRD F6, P2), not personalized. Lives inside Add Workout per
  * the confirmed navigation decision (a section here, not a 5th tab). */
 export function ChallengesSection() {
   const { data: challenges, isLoading } = useActiveChallenges();
@@ -22,7 +22,9 @@ export function ChallengesSection() {
   );
 }
 
-function ChallengeCard({ challenge }: { challenge: Challenge }) {
+/** Exported so Session Summary can reuse the same card, rather than duplicating the progress-bar
+ * visual, inside its own "QUEST PROGRESS" section shown right after a workout completes. */
+export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const theme = useTheme();
   const completed = challenge.status === 'completed';
   const fraction = Math.min(1, challenge.progress_value / challenge.target_value);
