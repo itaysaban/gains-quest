@@ -123,7 +123,9 @@ export function ExercisePicker({ visible, onClose, onSelect, title = 'Add Exerci
           {!creating ? (
             <View
               style={{
-                backgroundColor: theme.background,
+                // cardInset, not background — this field sits on the picker's own ground, which is
+                // now black, so `background` here would make the field invisible.
+                backgroundColor: theme.cardInset,
                 borderRadius: radius.md,
                 paddingHorizontal: spacing.md,
                 paddingVertical: spacing.md,
