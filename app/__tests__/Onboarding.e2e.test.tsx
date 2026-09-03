@@ -57,13 +57,13 @@ it('selecting a unit or a training-day count updates the profile', async () => {
   await act(async () => {
     fireEvent.press(screen.getByText('Pounds (lb)'));
   });
-  let updateCall = supabaseMockCalls.find((c) => c.table === 'profiles' && c.method === 'update' && c.args[0]?.unit_preference);
+  let updateCall = supabaseMockCalls.find((c) => c.table === 'profiles' && c.method === 'update' && (c.args[0] as { unit_preference?: string })?.unit_preference);
   expect(updateCall?.args[0]).toEqual({ unit_preference: 'lb' });
 
   await act(async () => {
     fireEvent.press(screen.getByText('5'));
   });
-  updateCall = supabaseMockCalls.find((c) => c.table === 'profiles' && c.method === 'update' && c.args[0]?.weekly_goal_days);
+  updateCall = supabaseMockCalls.find((c) => c.table === 'profiles' && c.method === 'update' && (c.args[0] as { weekly_goal_days?: number })?.weekly_goal_days);
   expect(updateCall?.args[0]).toEqual({ weekly_goal_days: 5 });
 });
 
@@ -76,7 +76,7 @@ it('Skip on the preferences step marks onboarding complete and goes straight hom
     fireEvent.press(screen.getByText('Skip for now'));
   });
 
-  const updateCall = supabaseMockCalls.find((c) => c.table === 'profiles' && c.method === 'update' && c.args[0]?.onboarding_completed_at);
+  const updateCall = supabaseMockCalls.find((c) => c.table === 'profiles' && c.method === 'update' && (c.args[0] as { onboarding_completed_at?: string })?.onboarding_completed_at);
   expect(updateCall).toBeTruthy();
   expect(mockReplace).toHaveBeenCalledWith('/(tabs)/home');
 });
@@ -92,7 +92,7 @@ it('"Build a routine" marks onboarding complete and routes straight to the routi
     fireEvent.press(screen.getByText('Build a routine'));
   });
 
-  expect(supabaseMockCalls.some((c) => c.table === 'profiles' && c.method === 'update' && c.args[0]?.onboarding_completed_at)).toBe(true);
+  expect(supabaseMockCalls.some((c) => c.table === 'profiles' && c.method === 'update' && (c.args[0] as { onboarding_completed_at?: string })?.onboarding_completed_at)).toBe(true);
   expect(mockReplace).toHaveBeenCalledWith('/(tabs)/add-workout/routines/new');
 });
 
@@ -107,6 +107,6 @@ it('"Quick start a workout" marks onboarding complete and routes to Add Workout'
     fireEvent.press(screen.getByText('Quick start a workout'));
   });
 
-  expect(supabaseMockCalls.some((c) => c.table === 'profiles' && c.method === 'update' && c.args[0]?.onboarding_completed_at)).toBe(true);
+  expect(supabaseMockCalls.some((c) => c.table === 'profiles' && c.method === 'update' && (c.args[0] as { onboarding_completed_at?: string })?.onboarding_completed_at)).toBe(true);
   expect(mockReplace).toHaveBeenCalledWith('/(tabs)/add-workout');
 });

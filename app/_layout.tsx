@@ -6,9 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
-import { Barlow_400Regular, Barlow_500Medium, Barlow_600SemiBold, Barlow_700Bold } from '@expo-google-fonts/barlow';
-import { JetBrainsMono_600SemiBold } from '@expo-google-fonts/jetbrains-mono';
+import { EBGaramond_400Regular, EBGaramond_500Medium, EBGaramond_600SemiBold, EBGaramond_700Bold } from '@expo-google-fonts/eb-garamond';
 import { AuthProvider, useAuth } from '@/lib/auth/AuthProvider';
 import { queryClient, persistOptions } from '@/lib/queryClient';
 import { registerMutationDefaults } from '@/lib/registerMutationDefaults';
@@ -29,17 +27,15 @@ function RootNavigation() {
   const theme = useTheme();
   useStaleSessionPrompt({ checkOnAppForeground: true });
 
-  // Design handoff (design_handoff_gainquest): Barlow Condensed for display/headings, Barlow for
-  // body, JetBrains Mono for data/labels. Only the weights the spec actually calls for are loaded —
-  // display and mono are always used at one fixed weight (700 / 600 respectively), body needs all
-  // four since Text's `weight` prop can select any of them.
+  // Design handoff v2 (2026-09-01): one serif family, EB Garamond, across the whole app — weight,
+  // size and letter-spacing carry the hierarchy instead of switching families per role. Display and
+  // label roles are always used at one fixed weight (700 / 600 respectively); body needs all four
+  // since Text's `weight` prop can select any of them.
   const [fontsLoaded] = useFonts({
-    BarlowCondensed_700Bold,
-    Barlow_400Regular,
-    Barlow_500Medium,
-    Barlow_600SemiBold,
-    Barlow_700Bold,
-    JetBrainsMono_600SemiBold,
+    EBGaramond_400Regular,
+    EBGaramond_500Medium,
+    EBGaramond_600SemiBold,
+    EBGaramond_700Bold,
   });
 
   useEffect(() => {
@@ -80,6 +76,7 @@ function RootNavigation() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="session/active" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="session/summary" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+        <Stack.Screen name="session/quest-progress" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
       </Stack>
     </>
   );

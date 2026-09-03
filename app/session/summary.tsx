@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { View, Dimensions, Alert, Pressable, ActivityIndicator } from 'react-native';
+import { View, Dimensions, Alert, Pressable, ActivityIndicator, Switch } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
@@ -14,8 +14,8 @@ import { formatDuration, formatShortDate } from '@/lib/utils/date';
 import { pointSourceLabel, streakMultiplier } from '@/lib/utils/points';
 import { useSessionPointBreakdown, useTodayPointsEarned, useStreak } from '@/hooks/useGamification';
 import { useWorkoutSession, useDeleteCompletedSession } from '@/hooks/useWorkoutSession';
-import { useActiveChallenges } from '@/hooks/useChallenges';
-import { ChallengeCard } from '@/components/social/ChallengesSection';
+import { useUpdateSessionFeedPrivacy } from '@/hooks/useFeed';
+import { useQuestGains } from '@/hooks/useChallenges';
 
 interface PrResult {
   exercise_id: string;
@@ -54,12 +54,14 @@ export default function SessionSummary() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [discarding, setDiscarding] = useState(false);
 
+  const { hasAnyGain: questsAdvanced } = useQuestGains();
   const { data: workoutSession } = useWorkoutSession(params.sessionId);
   const { data: breakdown } = useSessionPointBreakdown(params.sessionId);
   const { data: todayEarned } = useTodayPointsEarned();
   const { data: streak } = useStreak();
-  const { data: challenges } = useActiveChallenges();
   const deleteSession = useDeleteCompletedSession();
+  const updateFeedPrivacy = useUpdateSessionFeedPrivacy();
+  const [includeWeights, setIncludeWeights] = useState(false);
 
   const prs: PrResult[] = params.prs ? JSON.parse(params.prs) : [];
   const newBadges: BadgeResult[] = params.newBadges ? JSON.parse(params.newBadges) : [];
@@ -70,6 +72,16 @@ export default function SessionSummary() {
   useEffect(() => {
     if (hasCelebration) setShowConfetti(true);
   }, [hasCelebration]);
+
+  function handleToggleIncludeWeights(next: boolean) {
+    setIncludeWeights(next);
+    // Best-effort, non-blocking — the session is already saved and the feed event already exists;
+    // a failed privacy update shouldn't interrupt the user leaving this screen. A real failure
+    // would leave the toggle showing the user's intent even if the server update didn't land,
+    // which is the safer failure mode for a privacy control (never silently show "off" while the
+    // server still has weights included).
+    updateFeedPrivacy.mutate({ sessionId: params.sessionId, includeWeights: next });
+  }
 
   async function handleShare() {
     try {
@@ -231,16 +243,26 @@ export default function SessionSummary() {
             </View>
           ) : null}
 
-          {challenges && challenges.length > 0 ? (
-            <View style={{ gap: spacing.sm }}>
-              <Text font="mono" size={12} color="muted" style={{ letterSpacing: 2, paddingHorizontal: 2 }}>
-                QUEST PROGRESS
+          <View style={{ backgroundColor: theme.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md }}>
+            <Text font="mono" size={12} color="muted" style={{ letterSpacing: 2 }}>
+              SHARE TO FEED
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Text font="body" weight="500" size={13} color="secondary" style={{ flex: 1 }}>
+                Activity type and duration
               </Text>
-              {challenges.map((challenge) => (
-                <ChallengeCard key={challenge.id} challenge={challenge} />
-              ))}
+              {/* Always on — the feed's baseline shape always carries duration/set-count/workout
+                  type, there's no lesser state to opt out of, so this reads as locked-on rather
+                  than a real control (per the design). */}
+              <Switch value disabled />
             </View>
-          ) : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Text font="body" weight="500" size={13} color="secondary" style={{ flex: 1 }}>
+                Include weights and loads
+              </Text>
+              <Switch value={includeWeights} onValueChange={handleToggleIncludeWeights} />
+            </View>
+          </View>
 
           {hasCelebration ? <Button label="Share screenshot" variant="secondary" onPress={handleShare} fullWidth /> : null}
         </View>
@@ -266,7 +288,12 @@ export default function SessionSummary() {
             </Text>
           )}
         </Pressable>
-        <Pressable onPress={() => router.dismissTo('/(tabs)/home')} style={{ flex: 2 }}>
+        {/* Quest Progress only earns its own screen when this session actually moved a quest —
+            otherwise it'd be a full-screen step showing nothing new, so go straight home instead. */}
+        <Pressable
+          onPress={() => (questsAdvanced ? router.push('/session/quest-progress') : router.dismissTo('/(tabs)/home'))}
+          style={{ flex: 2 }}
+        >
           <LinearGradient
             colors={[theme.gradientFrom, theme.gradientTo]}
             start={{ x: 0, y: 0 }}

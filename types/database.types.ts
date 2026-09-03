@@ -549,6 +549,10 @@ export interface Database {
         Args: { p_feed_event_id: string };
         Returns: boolean;
       };
+      fn_update_session_feed_privacy: {
+        Args: { p_session_id: string; p_include_weights: boolean };
+        Returns: undefined;
+      };
       fn_active_challenges: {
         Args: { p_user_id: string };
         Returns: {
@@ -559,10 +563,18 @@ export interface Database {
           metric: 'sessions_completed' | 'new_prs' | 'total_sets';
           target_value: number;
           progress_value: number;
-          status: 'active' | 'completed';
+          status: 'active' | 'ready_to_claim' | 'completed';
           points: number;
           period_end: string;
         }[];
+      };
+      fn_claim_challenge: {
+        Args: { p_user_challenge_id: string };
+        Returns: undefined;
+      };
+      fn_dev_reset_challenges: {
+        Args: { p_user_id: string };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;

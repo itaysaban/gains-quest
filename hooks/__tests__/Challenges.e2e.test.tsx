@@ -11,8 +11,12 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 import { mockSupabaseResponse, mockSupabaseResponseOnce, resetSupabaseMock, supabaseMockCalls, defaultMockSession } from '@/lib/testing/supabaseMockState';
 import { useSessionStore } from '@/store/sessionStore';
-import { useActiveChallenges } from '../useChallenges';
+import { useActiveChallenges, useClaimChallenge } from '../useChallenges';
 import { useCompleteSession } from '../useWorkoutSession';
+import type { Challenge } from '@/types/domain';
+
+const userId = defaultMockSession.user.id;
+const challengesQueryKey = ['active-challenges', userId];
 
 // M4 Story 4: assignment, progress computation, and the exactly-once GP award are already verified
 // against a live Postgres project (16 scenario tests, test-epic7.js in the scratchpad harness). This
@@ -81,6 +85,12 @@ it('completing a session invalidates active-challenges so it refetches with upda
     data: [{ id: 'uc-1', code: 'weekly_3_sessions', name: 'Get Moving', description: 'Complete 3 workouts this week', metric: 'sessions_completed', target_value: 3, progress_value: 1, status: 'active', points: 150, period_end: '2026-08-23' }],
     error: null,
   });
+  // useCompleteSession reads fn_active_challenges once more before completing, to snapshot the
+  // pre-session baseline the Quest Progress screen diffs against — so the "after" response is third.
+  mockSupabaseResponseOnce('rpc:fn_active_challenges', {
+    data: [{ id: 'uc-1', code: 'weekly_3_sessions', name: 'Get Moving', description: 'Complete 3 workouts this week', metric: 'sessions_completed', target_value: 3, progress_value: 1, status: 'active', points: 150, period_end: '2026-08-23' }],
+    error: null,
+  });
   mockSupabaseResponseOnce('rpc:fn_active_challenges', {
     data: [{ id: 'uc-1', code: 'weekly_3_sessions', name: 'Get Moving', description: 'Complete 3 workouts this week', metric: 'sessions_completed', target_value: 3, progress_value: 2, status: 'active', points: 150, period_end: '2026-08-23' }],
     error: null,
@@ -102,7 +112,71 @@ it('completing a session invalidates active-challenges so it refetches with upda
 
   await waitFor(() => expect(challenges.current.data?.[0].progress_value).toBe(2));
   const rpcCalls = supabaseMockCalls.filter((c) => c.table === 'rpc:fn_active_challenges');
-  expect(rpcCalls.length).toBe(2);
+  expect(rpcCalls.length).toBe(3); // initial read + pre-completion baseline snapshot + post-invalidation refetch
 
   useSessionStore.getState().endSession();
+});
+
+function makeChallenge(overrides: Partial<Challenge> = {}): Challenge {
+  return {
+    id: 'uc-1',
+    code: 'daily_workout',
+    name: 'Log a workout',
+    description: 'Log a workout',
+    metric: 'sessions_completed',
+    target_value: 1,
+    progress_value: 1,
+    status: 'ready_to_claim',
+    points: 20,
+    period_end: '2026-09-01',
+    ...overrides,
+  };
+}
+
+it('useClaimChallenge optimistically flips a ready_to_claim quest to completed', async () => {
+  mockSupabaseResponse('rpc:fn_claim_challenge', { data: null, error: null });
+
+  const queryClient = createTestQueryClient();
+  queryClient.setQueryData(challengesQueryKey, [makeChallenge()]);
+  const wrapper = makeWrapper(queryClient);
+
+  const { result } = await renderHook(() => useClaimChallenge(), { wrapper });
+  await act(async () => {
+    await Promise.resolve();
+  });
+
+  await act(async () => {
+    result.current.mutate('uc-1');
+    await Promise.resolve();
+  });
+
+  const cached = queryClient.getQueryData<Challenge[]>(challengesQueryKey);
+  expect(cached?.[0].status).toBe('completed');
+
+  const rpcCall = supabaseMockCalls.find((c) => c.table === 'rpc:fn_claim_challenge');
+  expect(rpcCall?.args[0]).toEqual({ p_user_challenge_id: 'uc-1' });
+});
+
+it('useClaimChallenge rolls back to ready_to_claim if the server rejects the claim', async () => {
+  mockSupabaseResponse('rpc:fn_claim_challenge', { data: null, error: { message: 'Not ready to claim' } });
+
+  const queryClient = createTestQueryClient();
+  queryClient.setQueryData(challengesQueryKey, [makeChallenge()]);
+  const wrapper = makeWrapper(queryClient);
+
+  const { result } = await renderHook(() => useClaimChallenge(), { wrapper });
+  await act(async () => {
+    await Promise.resolve();
+  });
+
+  await act(async () => {
+    try {
+      await result.current.mutateAsync('uc-1');
+    } catch {
+      // expected
+    }
+  });
+
+  const cached = queryClient.getQueryData<Challenge[]>(challengesQueryKey);
+  expect(cached?.[0].status).toBe('ready_to_claim');
 });

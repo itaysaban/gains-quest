@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useSessionStore } from '@/store/sessionStore';
+import { challengeBaselineKey } from '@/hooks/useChallenges';
 import { mutationKeys } from '@/lib/mutationKeys';
 import { trainingLocalDate } from '@/lib/utils/date';
 import type { CompleteSessionResult, SessionExerciseWithSets, WorkoutSession } from '@/types/domain';
@@ -159,6 +160,20 @@ export function useCompleteSession() {
 
   return useMutation({
     mutationFn: async (sessionId: string): Promise<CompleteSessionResult> => {
+      // Snapshot quest progress *before* this session lands, so the Quest Progress screen can tell
+      // what this workout actually advanced (vs. what was already done earlier today). Read fresh
+      // rather than off the cache — the cached copy is missing entirely on any path that skips Add
+      // Workout (Home quick-start, a routine deep link), and no baseline reads as "nothing gained",
+      // which would wrongly skip the screen. fn_active_challenges is safe to call here: every read
+      // already recomputes and reassigns rows. Session comes off the client rather than useAuth() so
+      // this hook doesn't require an AuthProvider in the tree.
+      const { data: auth } = await supabase.auth.getSession();
+      const userId = auth.session?.user.id;
+      if (userId) {
+        const { data: baseline } = await supabase.rpc('fn_active_challenges', { p_user_id: userId });
+        queryClient.setQueryData(challengeBaselineKey, baseline ?? []);
+      }
+
       const { data, error } = await supabase.rpc('fn_complete_session', { p_session_id: sessionId });
       if (error) throw error;
       return data as CompleteSessionResult;

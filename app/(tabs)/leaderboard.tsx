@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -12,10 +13,10 @@ import type { LeaderboardRow } from '@/types/domain';
 
 type Scope = 'global' | 'friends';
 
-/** Leaderboard — M4 Story 2, PRD §6.2, MVP scope. Not built here: the podium graphic and "delta
- * since yesterday" from the design handoff (no historical rank snapshots exist to compute a delta
- * from), and promotion/relegation (nothing processes season rollover yet, so showing "promotion top
- * 20" would imply a mechanic that doesn't actually run) — a plain ranked list instead. */
+/** Leaderboard — M4 Story 2, PRD §6.2, MVP scope, podium added 2026-09-01 (third design handoff).
+ * Still not built: the "▲ N since yesterday" delta on the pinned row (needs daily rank snapshots —
+ * real new backend infra, not a visual fix) and promotion/relegation (nothing processes season
+ * rollover yet, so showing "promotion top 20" would imply a mechanic that doesn't actually run). */
 export default function Leaderboard() {
   const theme = useTheme();
   const router = useRouter();
@@ -62,14 +63,96 @@ export default function Leaderboard() {
         ) : !rows || rows.length === 0 ? (
           <EmptyState icon="trophy-outline" title="Nobody's on the board yet" message="Finish a workout to earn GainPoints and claim the top spot." />
         ) : (
-          <View style={{ gap: spacing.xs }}>
-            {rows.map((row) => (
-              <LeaderboardRowItem key={row.user_id} row={row} />
-            ))}
+          <View style={{ gap: spacing.md }}>
+            {rows.length >= 3 ? <Podium top3={rows.slice(0, 3)} /> : null}
+            <View style={{ gap: spacing.xs }}>
+              {(rows.length >= 3 ? rows.slice(3) : rows).map((row) => (
+                <LeaderboardRowItem key={row.user_id} row={row} />
+              ))}
+            </View>
           </View>
         )}
       </View>
     </Screen>
+  );
+}
+
+/** top3 must be exactly ranks 1, 2, 3 in that order (fn_leaderboard's own ordering). Rendered as
+ * 2nd / 1st / 3rd left-to-right, matching the design's centre-raised layout. */
+function Podium({ top3 }: { top3: LeaderboardRow[] }) {
+  const [first, second, third] = top3;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
+      <PodiumColumn row={second} place={2} plinthHeight={74} />
+      <PodiumColumn row={first} place={1} plinthHeight={104} />
+      <PodiumColumn row={third} place={3} plinthHeight={58} />
+    </View>
+  );
+}
+
+function PodiumColumn({ row, place, plinthHeight }: { row: LeaderboardRow; place: 1 | 2 | 3; plinthHeight: number }) {
+  const theme = useTheme();
+  const isFirst = place === 1;
+  const avatarSize = isFirst ? 58 : 48;
+
+  return (
+    <View style={{ flex: isFirst ? 1.15 : 1, alignItems: 'center', gap: spacing.md }}>
+      {isFirst ? <Text style={{ fontSize: 16 }}>👑</Text> : null}
+      {isFirst ? (
+        <LinearGradient
+          colors={[theme.gradientFrom, theme.gradientTo]}
+          style={{ width: avatarSize, height: avatarSize, borderRadius: radius.full, borderWidth: row.is_self ? 2 : 0, borderColor: theme.text }}
+        />
+      ) : (
+        <View
+          style={{
+            width: avatarSize,
+            height: avatarSize,
+            borderRadius: radius.full,
+            backgroundColor: theme.avatarPlaceholder,
+            borderWidth: row.is_self ? 2 : 0,
+            borderColor: theme.primary,
+          }}
+        />
+      )}
+      <Text font="body" weight="600" size={isFirst ? 14 : 13} numberOfLines={1}>
+        {row.display_name ?? 'Athlete'}
+        {row.is_self ? ' (you)' : ''}
+      </Text>
+      {/* Score — the element this podium is actually meant to draw the eye to, made deliberately
+          larger/bolder than the original 11/13px treatment. */}
+      <Text font="display" size={isFirst ? 24 : 20} style={{ color: theme.gradientFrom }}>
+        {row.season_gp.toLocaleString()}
+      </Text>
+      {isFirst ? (
+        <LinearGradient
+          colors={[theme.gradientFrom, theme.gradientTo]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{ width: '100%', height: plinthHeight, borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text font="display" size={32} style={{ color: theme.onAccent }}>
+            {place}
+          </Text>
+        </LinearGradient>
+      ) : (
+        <View
+          style={{
+            width: '100%',
+            height: plinthHeight,
+            backgroundColor: theme.surface,
+            borderTopLeftRadius: radius.md,
+            borderTopRightRadius: radius.md,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text font="display" size={26} style={{ color: '#C9C9E0' }}>
+            {place}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }
 

@@ -26,6 +26,23 @@ export function useFriendFeed() {
   });
 }
 
+/** Session Summary's "Include weights and loads" toggle (second design handoff, 2026-09-01). The
+ * session_completed feed event already exists by the time this screen renders (fn_complete_session
+ * posted it) — this just patches that one event's metadata after the fact. Not surfaced through the
+ * friend-feed cache directly (the toggle lives on a screen the viewer's own feed query isn't even
+ * mounted on), so no optimistic cache patch — a plain mutation is enough. */
+export function useUpdateSessionFeedPrivacy() {
+  return useMutation({
+    mutationFn: async ({ sessionId, includeWeights }: { sessionId: string; includeWeights: boolean }): Promise<void> => {
+      const { error } = await supabase.rpc('fn_update_session_feed_privacy', {
+        p_session_id: sessionId,
+        p_include_weights: includeWeights,
+      });
+      if (error) throw error;
+    },
+  });
+}
+
 type FeedPages = InfiniteData<FeedEvent[], string | null>;
 
 export function useToggleReaction() {

@@ -43,6 +43,10 @@ it('useCompleteSession calls fn_complete_session with the session id and clears 
     prs: [{ exercise_id: 'exercise-1', record_type: 'weight' }],
     new_badges: [{ code: 'first-100kg', name: 'First 100kg', icon: '🏋️', category: 'strength' }],
   };
+  // Completing first snapshots quest progress (the baseline the Quest Progress screen diffs against),
+  // so this RPC is hit before fn_complete_session — irrelevant to what this test asserts, but it has
+  // to be primed or the mock throws.
+  mockSupabaseResponse('rpc:fn_active_challenges', { data: [], error: null });
   mockSupabaseResponse('rpc:fn_complete_session', { data: rpcResult, error: null });
 
   const { result } = await renderHook(() => useCompleteSession(), { wrapper: makeWrapper(createTestQueryClient()) });
