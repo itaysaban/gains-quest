@@ -143,9 +143,7 @@ export function QuestCard({ challenge, animate = true }: { challenge: Challenge;
     }
   }, [readyToClaim, completion, jump, animate]);
   const cardStyle = useAnimatedStyle(() => ({
-    // Resting fill is `surface`, not `background` — since the page ground went black these would be
-    // black-on-black and the card would read as just a floating border.
-    backgroundColor: interpolateColor(completion.value, [0, 1], [theme.surface, READY_TO_CLAIM_BG]),
+    backgroundColor: interpolateColor(completion.value, [0, 1], [theme.background, READY_TO_CLAIM_BG]),
     borderColor: interpolateColor(completion.value, [0, 1], [theme.border, theme.primary]),
     transform: [{ scale: jump.value }],
   }));

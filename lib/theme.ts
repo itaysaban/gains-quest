@@ -44,15 +44,9 @@ const light = {
 };
 
 const dark = {
-  // Screen ground, black as of 2026-09-03 (was #191933, the design handoff's "color.surface" —
-  // the handoff calls the screen ground "surface" and the cards "background", the opposite of this
-  // app's naming, so values were mapped across rather than renaming every token and usage site).
-  // Note this flips the elevation polarity: cards used to sit *darker* than the page, and now sit
-  // lighter than it. Anything that wants a visible fill on the page must use a surface token — not
-  // `background`, which is now the same black as the ground behind it.
-  background: '#000000',
-  surface: '#13131F',
-  surfaceAlt: '#1C1C2E',
+  background: '#191933', // color.surface (screen background) in the handoff — "surface" there means
+  surface: '#13131F', //   what this app already calls "background"; kept this app's own naming and
+  surfaceAlt: '#1C1C2E', // mapped values across instead of renaming every token/usage site.
   border: '#24243A', // color.hairline
   text: '#FFFFFF',
   textMuted: '#6D6D88', // color.text.muted
