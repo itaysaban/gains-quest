@@ -10,7 +10,18 @@ export type EquipmentType = 'barbell' | 'dumbbell' | 'machine' | 'bodyweight' | 
 export type TrackingType = 'weight_reps' | 'time' | 'distance' | 'bodyweight_reps' | 'distance_duration';
 export type SessionStatus = 'in_progress' | 'completed' | 'discarded';
 export type SetType = 'warmup' | 'working' | 'drop' | 'failure';
-export type PrRecordType = 'max_weight' | 'max_reps_at_weight' | 'est_1rm' | 'session_volume' | 'best_set_volume';
+/** Strength records are all "higher is better". `best_pace` is the exception in the whole set —
+ * it stores seconds per kilometre, so LOWER wins. Anything ranking records generically must special
+ * case it. Its `context.band_m` says which distance band the pace belongs to (see fn_pace_bands). */
+export type PrRecordType =
+  | 'max_weight'
+  | 'max_reps_at_weight'
+  | 'est_1rm'
+  | 'session_volume'
+  | 'best_set_volume'
+  | 'best_pace'
+  | 'longest_distance'
+  | 'longest_duration';
 export type MeasurementType = 'bodyweight' | 'body_fat_pct' | 'circumference';
 export type PointSource = 'base' | 'volume' | 'cardio' | 'pr' | 'routine' | 'achievement';
 // M3 Epic 3 Story 3.1: replaced the old 4-category set with the PRD's v1.0 categories.
