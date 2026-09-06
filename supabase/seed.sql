@@ -22,6 +22,9 @@ insert into public.exercises (user_id, name, category, muscle_groups, equipment,
   (null, 'Banded Lateral Walk', 'legs', array['glutes'], 'band', 'weight_reps', true),
   (null, 'Plank', 'core', array['core'], 'bodyweight', 'time', true),
   (null, 'Hanging Leg Raise', 'core', array['core'], 'bodyweight', 'bodyweight_reps', true),
-  (null, 'Treadmill Run', 'cardio', array['cardio'], 'bodyweight', 'distance', true),
-  (null, 'Rowing Machine', 'cardio', array['cardio','back'], 'machine', 'distance', true)
+  -- distance_duration, not distance: 'distance' gives no time input, earns no cardio GP (the award
+  -- sums only 'time'/'distance_duration'), and makes pace records impossible. See
+  -- 20260906000007_fix_distance_tracking_types.sql, which corrects already-seeded databases.
+  (null, 'Treadmill Run', 'cardio', array['cardio'], 'bodyweight', 'distance_duration', true),
+  (null, 'Rowing Machine', 'cardio', array['cardio','back'], 'machine', 'distance_duration', true)
 on conflict do nothing;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, View, TextInput, FlatList, Pressable, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme, spacing, radius } from '@/lib/theme';
@@ -17,6 +17,13 @@ interface Props {
   onClose: () => void;
   onSelect: (exercise: Exercise) => void;
   title?: string;
+  /** Pre-fills the search box when the picker opens — Quick Start uses this so tapping "Run" lands
+   * on the running exercises instead of an empty library. The user can clear it like any typing. */
+  initialSearch?: string;
+  /** Applied alongside initialSearch, and load-bearing rather than cosmetic: the name search is a
+   * plain substring match, so "Run" alone also matches "Ab Crunch Machine" and "Cable Crunch"
+   * (crunch contains r-u-n). Constraining to a category is what makes the pre-filled search useful. */
+  initialCategory?: ExerciseCategory | null;
 }
 
 const CATEGORY_LABEL: Record<ExerciseCategory, string> = {
@@ -34,11 +41,27 @@ const CATEGORIES = Object.keys(CATEGORY_LABEL) as ExerciseCategory[];
  * Single-select preserved (tap a row, it's added and the sheet closes) rather than the mockup's
  * multi-select "Add N exercises" footer — that's a real interaction-model change across the 3
  * screens this component is embedded in, not a visual-only one; not taken on unsupervised. */
-export function ExercisePicker({ visible, onClose, onSelect, title = 'Add Exercise' }: Props) {
+export function ExercisePicker({
+  visible,
+  onClose,
+  onSelect,
+  title = 'Add Exercise',
+  initialSearch,
+  initialCategory = null,
+}: Props) {
   const theme = useTheme();
   const { session } = useAuth();
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<ExerciseCategory | null>(null);
+  const [search, setSearch] = useState(initialSearch ?? '');
+  const [category, setCategory] = useState<ExerciseCategory | null>(initialCategory);
+
+  // Re-seed each time the sheet opens, not just on first mount: the picker instance is kept alive
+  // across opens by the screens embedding it, so without this a second Quick Start tap would show
+  // whatever the user last typed.
+  useEffect(() => {
+    if (!visible) return;
+    setSearch(initialSearch ?? '');
+    setCategory(initialCategory);
+  }, [visible, initialSearch, initialCategory]);
   const [creating, setCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { data: exercises, isLoading } = useExercises({ search: search || undefined, category: category ?? undefined });

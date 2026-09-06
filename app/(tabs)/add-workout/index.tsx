@@ -13,21 +13,39 @@ import { ChallengesSection } from '@/components/social/ChallengesSection';
 import { supabase } from '@/lib/supabase';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { RoutineExerciseWithDetails } from '@/types/domain';
+import type { ExerciseCategory } from '@/types/database.types';
 
 // workoutType (passed to fn_start_session, stored on workout_sessions.workout_type — badge criteria
 // like distinct_workout_types_in_week key off this exact string) stays unchanged from before this
 // redesign; icon/label are display-only.
-const QUICK_START_TYPES: { workoutType: string; icon: string; label: string }[] = [
+// `search` pre-fills the exercise picker when the tile is tapped, so Quick Start lands on the
+// relevant exercises instead of an empty session and a library the user has to guess at.
+//
+// `category` is not optional dressing: the picker's search is a plain name substring match, so
+// "Run" on its own also matches "Ab Crunch Machine" and "Cable Crunch" (crunch contains r-u-n), and
+// "Box" matches "Box Jump" and "Box Squat". Pairing the term with cardio is what makes the result
+// list actually say what the tile promised.
+//
+// Every term here is matched against real seeded exercise names (20260906000008 added the sports
+// that had none). Renaming an exercise silently empties its tile — keep the two in step.
+const QUICK_START_TYPES: {
+  workoutType: string;
+  icon: string;
+  label: string;
+  search?: string;
+  category?: ExerciseCategory;
+}[] = [
+  // Gym opens the picker unfiltered — the strength library is the whole rest of the catalogue.
   { workoutType: 'Weightlifting', icon: '🏋️', label: 'Gym' },
-  { workoutType: 'Yoga', icon: '🧘', label: 'Yoga' },
-  { workoutType: 'Running', icon: '🏃', label: 'Run' },
-  { workoutType: 'Cycling', icon: '🚴', label: 'Cycle' },
-  { workoutType: 'Swimming', icon: '🏊', label: 'Swim' },
-  { workoutType: 'Boxing', icon: '🥊', label: 'Boxing' },
-  { workoutType: 'Tennis', icon: '🎾', label: 'Tennis' },
-  { workoutType: 'Soccer', icon: '⚽', label: 'Soccer' },
-  { workoutType: 'Basketball', icon: '🏀', label: 'Basketball' },
-  { workoutType: 'Hockey', icon: '🏒', label: 'Hockey' },
+  { workoutType: 'Yoga', icon: '🧘', label: 'Yoga', search: 'Yoga', category: 'cardio' },
+  { workoutType: 'Running', icon: '🏃', label: 'Run', search: 'Run', category: 'cardio' },
+  { workoutType: 'Cycling', icon: '🚴', label: 'Cycle', search: 'Cycl', category: 'cardio' },
+  { workoutType: 'Swimming', icon: '🏊', label: 'Swim', search: 'Swim', category: 'cardio' },
+  { workoutType: 'Boxing', icon: '🥊', label: 'Boxing', search: 'Boxing', category: 'cardio' },
+  { workoutType: 'Tennis', icon: '🎾', label: 'Tennis', search: 'Tennis', category: 'cardio' },
+  { workoutType: 'Soccer', icon: '⚽', label: 'Soccer', search: 'Soccer', category: 'cardio' },
+  { workoutType: 'Basketball', icon: '🏀', label: 'Basketball', search: 'Basketball', category: 'cardio' },
+  { workoutType: 'Hockey', icon: '🏒', label: 'Hockey', search: 'Hockey', category: 'cardio' },
 ];
 
 /** Add Workout — design handoff §2 / PRD §7.3, restructured per the PRD's own verdict ("needs
@@ -58,9 +76,15 @@ export default function AddWorkout() {
     router.push('/session/active');
   }
 
-  async function handleQuickStart(workoutType: string) {
-    await startSession.mutateAsync({ routineId: null, workoutType });
-    router.push('/session/active');
+  async function handleQuickStart(item: (typeof QUICK_START_TYPES)[number]) {
+    await startSession.mutateAsync({ routineId: null, workoutType: item.workoutType });
+    // Carry the tile's intent into the session so the picker opens pre-filtered. Without this the
+    // user lands on an empty session with no indication of what to add — which is how a treadmill
+    // run ended up logged against a distance-only exercise that earned nothing.
+    router.push({
+      pathname: '/session/active',
+      params: item.search ? { pickSearch: item.search, pickCategory: item.category ?? '' } : {},
+    });
   }
 
   if (!profile) return <LoadingState />;
@@ -214,7 +238,7 @@ export default function AddWorkout() {
             ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
             renderItem={({ item }) => (
               <Pressable
-                onPress={() => handleQuickStart(item.workoutType)}
+                onPress={() => handleQuickStart(item)}
                 style={{
                   width: 72,
                   backgroundColor: theme.surface,
