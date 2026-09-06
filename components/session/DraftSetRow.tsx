@@ -8,6 +8,7 @@ import { RpeSlider } from './RpeSlider';
 import { useLogSet } from '@/hooks/useLoggedSets';
 import { useLastSessionSets } from '@/hooks/useLastSessionSets';
 import { displayWeight, toStoredKg } from '@/lib/utils/units';
+import { calculatePlates, formatPlateLoad, isPlateLoadable } from '@/lib/utils/plates';
 import type { Exercise, LoggedSet } from '@/types/domain';
 import type { SetType, UnitPreference } from '@/types/database.types';
 
@@ -97,6 +98,16 @@ export function DraftSetRow({
   const trackingType = exercise.tracking_type;
   const displayWeightValue = displayWeight(draft.weightKg, unit);
 
+  // Plate calculator (PRD §6.1.3, minimal scope). Shown inline rather than behind a tap: this is the
+  // app's most latency-sensitive screen, and a muted one-liner costs less than an interaction.
+  // Barbells only — there is no per-side maths worth showing for a dumbbell or a machine.
+  // Assumes the standard 20 kg bar; the 15 kg switch needs a persisted user setting that does not
+  // exist yet, so it is deliberately not guessed at here.
+  const plateLoad =
+    trackingType === 'weight_reps' && isPlateLoadable(exercise.equipment) && draft.weightKg != null
+      ? calculatePlates(draft.weightKg, unit, 20)
+      : null;
+
   return (
     <View style={{ gap: spacing.sm, backgroundColor: theme.cardInset, borderRadius: radius.md, padding: spacing.sm }}>
       <View style={{ flexDirection: 'row', gap: spacing.xs }}>
@@ -168,6 +179,15 @@ export function DraftSetRow({
           <Text style={{ fontSize: 20, color: theme.onAccent, fontWeight: '700' }}>✓</Text>
         </Pressable>
       </View>
+
+      {plateLoad ? (
+        <Text font="mono" size={11} color="muted" style={{ letterSpacing: 0.5 }}>
+          {plateLoad.perSide.length === 0
+            ? `BAR ONLY · ${plateLoad.bar}`
+            : `PER SIDE · ${formatPlateLoad(plateLoad)}`}
+          {plateLoad.remainder > 0 ? `  (${plateLoad.remainder} short)` : ''}
+        </Text>
+      ) : null}
 
       {rpeExpanded ? (
         <RpeSlider value={draft.rpe} onChange={(v) => setDraft((d) => ({ ...d, rpe: v }))} />
