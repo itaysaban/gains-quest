@@ -230,6 +230,49 @@ export function useLeaderboard(scope: 'global' | 'friends') {
   });
 }
 
+/** Archives any season that has closed since the last visit, then reports how many it wrote.
+ *
+ * This is the whole trigger for season rollover — there is no scheduled job, so if nothing calls
+ * this, no season is ever archived. It runs on the Leaderboard screen because that is the surface
+ * where a rolled-over season is visible; the call is a cheap no-op once a season is archived (one
+ * existence check per past season), so mounting repeatedly costs nothing.
+ *
+ * A failure here is deliberately not surfaced to the user: archival is bookkeeping, it retries on
+ * the next mount, and a broken archive should never stop the live board from rendering. */
+export function useEnsureSeasonsArchived() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['seasons-archived', userId],
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc('fn_ensure_seasons_archived', {});
+      if (error) throw error;
+      return data ?? 0;
+    },
+  });
+}
+
+/** The caller's own archived finishes, newest first — "final standings are archived to the user's
+ * profile" (PRD §6.2). Empty until at least one season has closed and been archived. */
+export function useMySeasons() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['my-seasons', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('fn_my_seasons', {});
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function usePersonalRecords(exerciseId?: string) {
   const { session } = useAuth();
   const userId = session?.user.id;

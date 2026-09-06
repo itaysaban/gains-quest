@@ -6,7 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useLeaderboard } from '@/hooks/useGamification';
+import { useLeaderboard, useEnsureSeasonsArchived } from '@/hooks/useGamification';
 import { useFriends } from '@/hooks/useFriends';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { LeaderboardRow } from '@/types/domain';
@@ -14,15 +14,21 @@ import type { LeaderboardRow } from '@/types/domain';
 type Scope = 'global' | 'friends';
 
 /** Leaderboard — M4 Story 2, PRD §6.2, MVP scope, podium added 2026-09-01 (third design handoff).
+ * Season archival landed 2026-09-06 (20260906000001_season_rollover.sql) — closed seasons are now
+ * captured, though no UI reads them back yet.
  * Still not built: the "▲ N since yesterday" delta on the pinned row (needs daily rank snapshots —
- * real new backend infra, not a visual fix) and promotion/relegation (nothing processes season
- * rollover yet, so showing "promotion top 20" would imply a mechanic that doesn't actually run). */
+ * real new backend infra, not a visual fix) and promotion/relegation, which needs tiers to become a
+ * persistent assignment rather than a value re-derived from rank on every read — so showing
+ * "promotion top 20" would still imply a mechanic that doesn't actually run. */
 export default function Leaderboard() {
   const theme = useTheme();
   const router = useRouter();
   const [scope, setScope] = useState<Scope>('global');
   const { data: friends } = useFriends();
   const { data: rows, isLoading } = useLeaderboard(scope);
+  // Season rollover has no scheduled job — this call is what actually archives a closed season.
+  // Fire-and-forget: its result is never rendered, and a failure must not block the live board.
+  useEnsureSeasonsArchived();
 
   const showFriendsEmptyState = scope === 'friends' && friends?.length === 0;
   const seasonLabel = new Date().toLocaleDateString(undefined, { month: 'long' }).toUpperCase();

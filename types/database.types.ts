@@ -527,6 +527,27 @@ export interface Database {
           tier_size: number | null;
         }[];
       };
+      fn_ensure_seasons_archived: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      fn_season_standings: {
+        Args: { p_season_id: string };
+        Returns: {
+          rank: number;
+          user_id: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          season_gp: number;
+          is_self: boolean;
+          tier_number: number;
+          tier_size: number;
+        }[];
+      };
+      fn_my_seasons: {
+        Args: Record<string, never>;
+        Returns: { season_id: string; rank: number; tier_number: number; season_gp: number }[];
+      };
       fn_friend_feed: {
         Args: { p_limit?: number; p_before?: string | null };
         Returns: {
