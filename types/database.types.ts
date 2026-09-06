@@ -187,6 +187,11 @@ export interface Database {
           total_sets: number;
           workout_type: string | null;
           local_date: string | null;
+          // Health sync (PRD §3, v1.1) — always null until then. Readable but deliberately absent
+          // from the insert type below: nothing should be writing these until the import path that
+          // owns them actually exists.
+          external_source: string | null;
+          external_id: string | null;
           created_at: string;
           updated_at: string;
         },
