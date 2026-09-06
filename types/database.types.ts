@@ -546,7 +546,25 @@ export interface Database {
       };
       fn_my_seasons: {
         Args: Record<string, never>;
-        Returns: { season_id: string; rank: number; tier_number: number; season_gp: number }[];
+        Returns: {
+          season_id: string;
+          rank: number;
+          tier_number: number;
+          season_gp: number;
+          previous_tier_number: number | null;
+          movement: 'first' | 'promoted' | 'relegated' | 'held';
+        }[];
+      };
+      fn_last_season: {
+        Args: Record<string, never>;
+        Returns: {
+          season_id: string;
+          rank: number;
+          tier_number: number;
+          season_gp: number;
+          previous_tier_number: number | null;
+          movement: 'first' | 'promoted' | 'relegated' | 'held';
+        } | null;
       };
       fn_friend_feed: {
         Args: { p_limit?: number; p_before?: string | null };

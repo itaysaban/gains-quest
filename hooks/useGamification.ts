@@ -273,6 +273,24 @@ export function useMySeasons() {
   });
 }
 
+/** The caller's most recent completed season, with whether they were promoted or relegated relative
+ * to the last season they actually placed in. Null until a season has closed AND been archived, so
+ * the calling screen must treat absence as the normal first-month state, not an error. */
+export function useLastSeason() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useQuery({
+    queryKey: ['last-season', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('fn_last_season', {});
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function usePersonalRecords(exerciseId?: string) {
   const { session } = useAuth();
   const userId = session?.user.id;

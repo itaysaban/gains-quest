@@ -6,7 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useLeaderboard, useEnsureSeasonsArchived } from '@/hooks/useGamification';
+import { useLeaderboard, useEnsureSeasonsArchived, useLastSeason } from '@/hooks/useGamification';
 import { useFriends } from '@/hooks/useFriends';
 import { useTheme, spacing, radius } from '@/lib/theme';
 import type { LeaderboardRow } from '@/types/domain';
@@ -29,6 +29,7 @@ export default function Leaderboard() {
   // Season rollover has no scheduled job — this call is what actually archives a closed season.
   // Fire-and-forget: its result is never rendered, and a failure must not block the live board.
   useEnsureSeasonsArchived();
+  const { data: lastSeason } = useLastSeason();
 
   const showFriendsEmptyState = scope === 'friends' && friends?.length === 0;
   const seasonLabel = new Date().toLocaleDateString(undefined, { month: 'long' }).toUpperCase();
@@ -55,6 +56,8 @@ export default function Leaderboard() {
             Tier {rows[0].tier_number} · {rows[0].tier_size} lifters
           </Text>
         ) : null}
+
+        {lastSeason ? <LastSeasonCard season={lastSeason} /> : null}
 
         {isLoading ? (
           <LoadingState />
@@ -158,6 +161,73 @@ function PodiumColumn({ row, place, plinthHeight }: { row: LeaderboardRow; place
           </Text>
         </View>
       )}
+    </View>
+  );
+}
+
+type LastSeason = {
+  season_id: string;
+  rank: number;
+  tier_number: number;
+  season_gp: number;
+  previous_tier_number: number | null;
+  movement: 'first' | 'promoted' | 'relegated' | 'held';
+};
+
+/** How the last completed season finished, and whether that tier was a step up or down from the
+ * previous one the user placed in. Only rendered once a season has actually closed and been
+ * archived, so a first-month user never sees an empty shell. */
+function LastSeasonCard({ season }: { season: LastSeason }) {
+  const theme = useTheme();
+
+  // season_id is 'YYYY-MM'; build the date in UTC so a negative timezone offset can't roll it back
+  // into the previous month and mislabel the card.
+  const [year, month] = season.season_id.split('-').map(Number);
+  const monthLabel = new Date(Date.UTC(year, month - 1, 1))
+    .toLocaleDateString(undefined, { month: 'long', timeZone: 'UTC' })
+    .toUpperCase();
+
+  const movement = {
+    promoted: { label: 'PROMOTED', color: theme.success, glyph: '▲' },
+    relegated: { label: 'RELEGATED', color: theme.danger, glyph: '▼' },
+    held: { label: 'HELD', color: theme.textMuted, glyph: '—' },
+    first: { label: 'FIRST SEASON', color: theme.gradientFrom, glyph: '★' },
+  }[season.movement];
+
+  return (
+    <View
+      style={{
+        backgroundColor: theme.surface,
+        borderRadius: radius.md,
+        padding: spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+      }}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text font="mono" size={11} color="muted" style={{ letterSpacing: 1.5 }}>
+          LAST SEASON · {monthLabel}
+        </Text>
+        <Text font="display" size={22} style={{ lineHeight: 24 }}>
+          #{season.rank}
+        </Text>
+        <Text font="body" size={12} color="muted">
+          Tier {season.tier_number} · {season.season_gp.toLocaleString()} GP
+        </Text>
+      </View>
+
+      <View style={{ alignItems: 'flex-end', gap: 2 }}>
+        <Text style={{ fontSize: 16, color: movement.color, lineHeight: 18 }}>{movement.glyph}</Text>
+        <Text font="mono" size={10} weight="700" style={{ color: movement.color, letterSpacing: 1 }}>
+          {movement.label}
+        </Text>
+        {season.previous_tier_number !== null && season.movement !== 'held' ? (
+          <Text font="body" size={11} color="muted">
+            from tier {season.previous_tier_number}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
