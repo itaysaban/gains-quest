@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, ScrollView, Alert, Pressable } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -27,7 +27,6 @@ import { useTheme, spacing, radius } from '@/lib/theme';
 import { formatDuration } from '@/lib/utils/date';
 import { computeLiveVolume } from '@/lib/utils/session';
 import { supabase } from '@/lib/supabase';
-import type { ExerciseCategory } from '@/types/database.types';
 
 export default function ActiveSession() {
   const router = useRouter();
@@ -55,16 +54,6 @@ export default function ActiveSession() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [swapTargetId, setSwapTargetId] = useState<string | null>(null);
 
-  // Quick Start hands us the tile's intent (see QUICK_START_TYPES in add-workout). Opening the
-  // picker straight away is the point: a quick-start session begins empty, so without this the user
-  // arrives at a blank screen having just told us exactly what they came to do.
-  const { pickSearch, pickCategory } = useLocalSearchParams<{ pickSearch?: string; pickCategory?: string }>();
-  const [quickStartHandled, setQuickStartHandled] = useState(false);
-  useEffect(() => {
-    if (quickStartHandled || !pickSearch) return;
-    setQuickStartHandled(true);
-    setPickerVisible(true);
-  }, [pickSearch, quickStartHandled]);
   const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
@@ -244,8 +233,6 @@ export default function ActiveSession() {
       </ScrollView>
 
       <ExercisePicker
-        initialSearch={swapTargetId ? undefined : pickSearch}
-        initialCategory={swapTargetId || !pickCategory ? null : (pickCategory as ExerciseCategory)}
         visible={pickerVisible}
         onClose={() => {
           setPickerVisible(false);

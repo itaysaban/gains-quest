@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { View, FlatList, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,11 +8,12 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { useTodayPlan } from '@/hooks/useTodayPlan';
 import { useRoutines, useRoutineExercises } from '@/hooks/useRoutines';
 import { useProfile } from '@/hooks/useProfile';
-import { useStartSession } from '@/hooks/useWorkoutSession';
+import { useStartSession, useAddExerciseToSession } from '@/hooks/useWorkoutSession';
 import { ChallengesSection } from '@/components/social/ChallengesSection';
+import { ExercisePicker } from '@/components/exercise/ExercisePicker';
 import { supabase } from '@/lib/supabase';
 import { useTheme, spacing, radius } from '@/lib/theme';
-import type { RoutineExerciseWithDetails } from '@/types/domain';
+import type { RoutineExerciseWithDetails, Exercise } from '@/types/domain';
 import type { ExerciseCategory } from '@/types/database.types';
 
 // workoutType (passed to fn_start_session, stored on workout_sessions.workout_type — badge criteria
@@ -61,6 +62,7 @@ export default function AddWorkout() {
   const { data: todayRoutines, isLoading: loadingPlan } = useTodayPlan();
   const { data: routines } = useRoutines();
   const startSession = useStartSession();
+  const addExercise = useAddExerciseToSession();
 
   const todayRoutine = todayRoutines?.[0];
   const { data: todayRoutineExercises } = useRoutineExercises(todayRoutine?.id);
@@ -76,15 +78,23 @@ export default function AddWorkout() {
     router.push('/session/active');
   }
 
-  async function handleQuickStart(item: (typeof QUICK_START_TYPES)[number]) {
-    await startSession.mutateAsync({ routineId: null, workoutType: item.workoutType });
-    // Carry the tile's intent into the session so the picker opens pre-filtered. Without this the
-    // user lands on an empty session with no indication of what to add — which is how a treadmill
-    // run ended up logged against a distance-only exercise that earned nothing.
-    router.push({
-      pathname: '/session/active',
-      params: item.search ? { pickSearch: item.search, pickCategory: item.category ?? '' } : {},
-    });
+  // The picker opens HERE rather than after navigating, so a quick start is one transition: tap Run,
+  // choose the exercise, land on a session that already has it. Routing to the session first meant
+  // watching an empty screen appear and then a modal slide over it.
+  //
+  // It also stops orphaned sessions. Creating the session on tap meant backing out of the picker
+  // left an in_progress row with no exercises and no sets — there were real ones in the database.
+  // Nothing is written until an exercise is actually chosen.
+  const [pendingQuickStart, setPendingQuickStart] = useState<(typeof QUICK_START_TYPES)[number] | null>(null);
+
+  async function handlePickedExercise(exercise: Exercise) {
+    const type = pendingQuickStart;
+    setPendingQuickStart(null);
+    if (!type) return;
+
+    const newSession = await startSession.mutateAsync({ routineId: null, workoutType: type.workoutType });
+    await addExercise.mutateAsync({ sessionId: newSession.id, exerciseId: exercise.id, orderIndex: 1 });
+    router.push('/session/active');
   }
 
   if (!profile) return <LoadingState />;
@@ -238,7 +248,7 @@ export default function AddWorkout() {
             ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
             renderItem={({ item }) => (
               <Pressable
-                onPress={() => handleQuickStart(item)}
+                onPress={() => setPendingQuickStart(item)}
                 style={{
                   width: 72,
                   backgroundColor: theme.surface,
@@ -260,15 +270,43 @@ export default function AddWorkout() {
 
         <ChallengesSection />
 
+        {/* Replaces the old muted "Manage Exercises" text link. That pointed at the library, which is
+            a browsing surface — this is the "I know what I want, let me start" path, so it opens the
+            picker directly with no filter. The library is still reachable from its own tab. */}
         <Pressable
-          onPress={() => router.push('/(tabs)/library')}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm }}
+          onPress={() => setPendingQuickStart({ workoutType: 'Weightlifting', icon: '🏋️', label: 'Gym' })}
+          disabled={startSession.isPending}
         >
-          <Text font="body" color="muted" weight="600">
-            Manage Exercises
-          </Text>
+          <LinearGradient
+            colors={[theme.gradientFrom, theme.gradientTo]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: radius.xl,
+              paddingVertical: spacing.lg,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              gap: spacing.sm,
+              opacity: startSession.isPending ? 0.6 : 1,
+            }}
+          >
+            <Text style={{ fontSize: 18 }}>⚡</Text>
+            <Text font="body" weight="700" size={16} style={{ color: theme.onAccent }}>
+              Start a quick workout
+            </Text>
+          </LinearGradient>
         </Pressable>
       </View>
+
+      <ExercisePicker
+        visible={pendingQuickStart !== null}
+        onClose={() => setPendingQuickStart(null)}
+        onSelect={handlePickedExercise}
+        title={pendingQuickStart?.search ? `Choose your ${pendingQuickStart.label.toLowerCase()}` : 'Start a quick workout'}
+        initialSearch={pendingQuickStart?.search}
+        initialCategory={pendingQuickStart?.category ?? null}
+      />
     </Screen>
   );
 }
