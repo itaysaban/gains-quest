@@ -11,7 +11,9 @@ export default function AddWorkoutLayout() {
         headerShadowVisible: false,
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Add Workout' }} />
+      {/* No native header on the tab root — same reasoning as the Achievements stack: the screen's
+          own sections are the heading, and a native title bar just duplicates the tab label. */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="routines" options={{ headerShown: false }} />
     </Stack>
   );
