@@ -268,11 +268,10 @@ export default function AddWorkout() {
           />
         </View>
 
-        <ChallengesSection />
-
         {/* Replaces the old muted "Manage Exercises" text link. That pointed at the library, which is
             a browsing surface — this is the "I know what I want, let me start" path, so it opens the
-            picker directly with no filter. The library is still reachable from its own tab. */}
+            picker directly with no filter. The library is still reachable from its own tab.
+            Sits above Daily Quests: it is an action, and quests are a status readout. */}
         <Pressable
           onPress={() => setPendingQuickStart({ workoutType: 'Weightlifting', icon: '🏋️', label: 'Gym' })}
           disabled={startSession.isPending}
@@ -297,6 +296,8 @@ export default function AddWorkout() {
             </Text>
           </LinearGradient>
         </Pressable>
+
+        <ChallengesSection />
       </View>
 
       <ExercisePicker
