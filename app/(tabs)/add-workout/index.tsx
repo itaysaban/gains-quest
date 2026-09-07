@@ -101,9 +101,9 @@ export default function AddWorkout() {
 
   return (
     <Screen scroll>
-      <View style={{ gap: spacing.lg }}>
+      <View style={{ gap: spacing.xl }}>
         {loadingPlan ? null : todayRoutine ? (
-          <View style={{ gap: spacing.sm }}>
+          <View style={{ gap: spacing.md }}>
             <Text font="mono" size={13} color="muted" style={{ letterSpacing: 1.5 }}>
               TODAY&apos;S ROUTINE
             </Text>
@@ -145,7 +145,7 @@ export default function AddWorkout() {
           </View>
         ) : null}
 
-        <View style={{ gap: spacing.sm }}>
+        <View style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text font="mono" size={13} color="muted" style={{ letterSpacing: 1.5 }}>
               MY ROUTINES
@@ -222,7 +222,7 @@ export default function AddWorkout() {
           )}
         </View>
 
-        <View style={{ gap: spacing.sm }}>
+        <View style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
             <Text font="mono" size={13} color="muted" style={{ letterSpacing: 1.5 }}>
               QUICK START
